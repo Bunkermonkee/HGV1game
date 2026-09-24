@@ -3,10 +3,9 @@
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
 TypeScript, built with Vite into one static folder. No backend, no CDNs.
 
-> **Status: stage 1 – handling prototype.** One truck, one empty yard, debug
-> overlay. Collisions, scoring, levels, touch controls, audio and the share
-> card come in later stages. The full deploy/WordPress guide will be added at
-> the end.
+> **Status: stage 2 – collisions, scoring and share card.** One practice yard
+> with a target bay (Bay 7). Levels, touch controls and audio come next. The
+> full deploy/WordPress guide will be added at the end.
 
 ## Run it
 
@@ -40,6 +39,50 @@ steering lock/rate/self-centring, speeds, acceleration, jackknife angle,
 and the metres→pixels constant. Change a number, save, and the dev server
 reloads.
 
+## Scoring rules (`src/config/rules.ts`)
+
+- **Finish:** trailer on the target bay within ±3°, rear centre within
+  ±0.3 m of the bay centre line, rear within 0.5 m of the dock buffers,
+  truck stopped, handbrake on (Space). Applying the handbrake anywhere else
+  tells you what's wrong ("1.4 m off the buffers – back up a touch").
+- A live bay guide (angle / off centre / to buffers) appears once the
+  trailer is at the bay.
+- **Time** starts on the first pedal press. **Shunts** = each change from
+  reverse back to forward after the first reversing move.
+- **Contacts:** SAT collision of the tractor and trailer boxes against
+  walls, kerbs, bollards, parked trailers, buffers and cones.
+  - Under 2.5 mph: +5 s penalty and a small camera shake; the truck stops.
+  - 2.5 mph or more: **HEAVY CONTACT**, fail.
+  - Backing the trailer onto the buffers at 1.8 mph or less is correct
+    docking, so there's no penalty.
+  - Cones are knocked over (+5 s) but don't stop you.
+- **Jackknife:** articulation past 80° = fail.
+- **Stars** use per-level targets in the yard data (`stars.three` /
+  `stars.two`, each `{ shunts, time }`, judged on time including penalties).
+  Finishing at all is 1★; 3★ also needs zero contacts.
+- Best time and stars per level are saved in localStorage (`yardmaster.v1`),
+  wrapped in try/catch.
+
+## Results and share card
+
+The results screen is a delivery note ("Bay 7 – 38s – 2 shunts – ★★★").
+Alongside it a 1080×1080 PNG is generated (`src/share/card.ts`). It shows
+the logo slot, level and bay, a render of the player's actual parking job,
+stars, time, shunts, contacts, and "Can you beat me?" with the URL.
+
+- **Share** (Web Share API with the image + text) appears where the device
+  supports sharing files – most phones.
+- **Download image** and **Copy text** are always there as the fallback.
+- The share text lives in `src/share/share.ts`.
+
+## Brand
+
+- Colours: `styles/theme.css` (placeholders).
+- Station name, share URL and logo: `src/config/brand.ts`. For the logo, put
+  the file in `public/` (e.g. `public/logo.png`) and set
+  `logoSrc: './logo.png'`. It then appears on the delivery note and the share
+  card; until then a "LOGO" placeholder shows.
+
 ## How the physics works (`src/physics/artic.ts`)
 
 - **Tractor:** kinematic bicycle model about the drive axle,
@@ -64,7 +107,15 @@ src/main.ts           bootstrap, loop, DPR, auto-pause
 src/config/vehicle.ts vehicle tuning constants
 src/config/theme.ts   reads theme.css variables for the canvas
 src/core/             maths helpers, keyboard input
-src/physics/          artic kinematics, oriented-box geometry
+src/physics/          artic kinematics, oriented boxes, SAT collision
 src/render/           camera, yard/vehicle art, HUD, debug overlay
-src/game/yard.ts      yard layout data (becomes the level JSON format)
+src/game/yard.ts      yard/level data format + practice yard
+src/game/session.ts   one attempt: collisions, time, shunts, contacts, stars
+src/game/obstacles.ts yard data → collision boxes
+src/game/bay.ts       "parked correctly?" check
+src/game/storage.ts   localStorage progress
+src/config/rules.ts   scoring and contact rules
+src/config/brand.ts   station name, share URL, logo
+src/share/            share card image, share/download/copy
+src/ui/screens.ts     results (delivery note) and fail screens
 ```

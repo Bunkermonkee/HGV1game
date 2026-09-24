@@ -15,6 +15,14 @@ export class Camera {
 
   private targetX = 0;
   private targetY = 0;
+  private shakeAmount = 0;
+  private shakeX = 0;
+  private shakeY = 0;
+
+  /** Kick the camera (metres of peak offset); decays quickly. */
+  shake(amount: number): void {
+    this.shakeAmount = Math.max(this.shakeAmount, amount);
+  }
 
   follow(target: Vec2, snap = false): void {
     this.targetX = target.x;
@@ -31,6 +39,10 @@ export class Camera {
     this.y += (this.targetY - this.y) * k;
     const fit = Math.min(viewW, viewH) / (this.viewMetres * PIXELS_PER_METRE);
     this.scale = PIXELS_PER_METRE * fit * this.userZoom;
+    this.shakeAmount *= Math.exp(-8 * dt);
+    if (this.shakeAmount < 0.01) this.shakeAmount = 0;
+    this.shakeX = (Math.random() * 2 - 1) * this.shakeAmount;
+    this.shakeY = (Math.random() * 2 - 1) * this.shakeAmount;
   }
 
   zoomBy(factor: number): void {
@@ -40,7 +52,9 @@ export class Camera {
   /** Apply the world transform (metres → device pixels). */
   apply(ctx: CanvasRenderingContext2D, viewW: number, viewH: number, dpr: number): void {
     const s = this.scale * dpr;
-    ctx.setTransform(s, 0, 0, s, (viewW / 2 - this.x * this.scale) * dpr, (viewH / 2 - this.y * this.scale) * dpr);
+    const x = this.x + this.shakeX;
+    const y = this.y + this.shakeY;
+    ctx.setTransform(s, 0, 0, s, (viewW / 2 - x * this.scale) * dpr, (viewH / 2 - y * this.scale) * dpr);
   }
 
   worldToScreen(p: Vec2, viewW: number, viewH: number): Vec2 {

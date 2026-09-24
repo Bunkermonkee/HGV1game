@@ -38,3 +38,11 @@
   --yard-building-roof: #707a85;
   --yard-dock-door: #8c96a0;
 }
+
+/* Delivery-note results screen */
+:root {
+  --note-paper: #fbf8ef;
+  --note-ink: #1d2230;
+  --note-rule: #c9c2ad;
+  --note-stamp: #c8102e;
+}

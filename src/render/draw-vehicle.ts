@@ -172,11 +172,31 @@ export function drawCab(ctx: CanvasRenderingContext2D, artic: Artic): void {
   ctx.restore();
 }
 
+export interface TrailerLook {
+  reversing?: boolean;
+  braking?: boolean;
+  curtain?: string;
+}
+
 export function drawTrailer(ctx: CanvasRenderingContext2D, artic: Artic): void {
   const h = artic.hitch;
+  drawTrailerAt(ctx, h.x, h.y, artic.trailerHeading, {
+    reversing: artic.gear === 'R' && !artic.jackknifed,
+    braking: artic.braking || artic.handbrake,
+  });
+}
+
+/** Draw a trailer with its kingpin at (kx, ky), pointing along `heading`. */
+export function drawTrailerAt(
+  ctx: CanvasRenderingContext2D,
+  kx: number,
+  ky: number,
+  heading: number,
+  look: TrailerLook = {},
+): void {
   ctx.save();
-  ctx.translate(h.x, h.y);
-  ctx.rotate(artic.trailerHeading);
+  ctx.translate(kx, ky);
+  ctx.rotate(heading);
 
   // Tri-axle bogie (mostly hidden under the body; peeks out when viewed tight).
   const tw = TRAILER.track / 2;
@@ -186,7 +206,7 @@ export function drawTrailer(ctx: CanvasRenderingContext2D, artic: Artic): void {
   }
 
   // Curtain sides (seen as a thin band from above) and the roof.
-  ctx.fillStyle = theme.trailerCurtain;
+  ctx.fillStyle = look.curtain ?? theme.trailerCurtain;
   ctx.fillRect(T_REAR, -THW, TRAILER.length, TRAILER.width);
   ctx.fillStyle = theme.trailerRoof;
   ctx.fillRect(T_REAR + 0.12, -THW + 0.16, TRAILER.length - 0.24, TRAILER.width - 0.32);
@@ -208,8 +228,8 @@ export function drawTrailer(ctx: CanvasRenderingContext2D, artic: Artic): void {
   ctx.fillRect(T_REAR, -THW, 0.16, TRAILER.width);
 
   // Rear light clusters: reversing (white) inboard, stop/tail (red) outboard.
-  const reversing = artic.gear === 'R' && !artic.jackknifed;
-  const braking = artic.braking || artic.handbrake;
+  const reversing = !!look.reversing;
+  const braking = !!look.braking;
   for (const s of [-1, 1]) {
     ctx.fillStyle = braking ? '#ff2a2a' : '#8e1414';
     ctx.fillRect(T_REAR - 0.04, s > 0 ? THW - 0.42 : -THW + 0.06, 0.08, 0.36);

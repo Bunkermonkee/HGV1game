@@ -18,7 +18,11 @@ export class Keyboard {
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
-      if (CAPTURED.has(e.code)) e.preventDefault();
+      // Leave Space/Enter alone on buttons so the HTML screens stay keyboard-usable.
+      const onControl = e.target instanceof HTMLButtonElement || e.target instanceof HTMLInputElement;
+      if (CAPTURED.has(e.code) && !onControl) e.preventDefault();
+      // Space/Enter on a focused button activates the button – nothing else.
+      if (onControl && (e.code === 'Space' || e.code === 'Enter')) return;
       if (!e.repeat) this.pressed.add(e.code);
       this.down.add(e.code);
     });

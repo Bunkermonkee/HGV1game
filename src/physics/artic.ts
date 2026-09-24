@@ -48,6 +48,15 @@ export const DEFAULT_CONDITIONS: Conditions = { forwardGrip: 1 };
 
 export type ArticEvent = 'gear-forward' | 'gear-reverse' | 'jackknife';
 
+export interface ArticSnapshot {
+  x: number;
+  y: number;
+  heading: number;
+  trailerHeading: number;
+  speed: number;
+  jackknifed: boolean;
+}
+
 const L1 = TRACTOR.wheelbase;
 const A = TRACTOR.fifthWheelAhead;
 const L2 = TRAILER.kingpinToBogie;
@@ -114,6 +123,27 @@ export class Artic {
 
   get stopped(): boolean {
     return Math.abs(this.speed) < SPEED.stoppedThreshold;
+  }
+
+  /** Pose + speed, so a colliding physics step can be undone. */
+  snapshot(): ArticSnapshot {
+    return {
+      x: this.x,
+      y: this.y,
+      heading: this.heading,
+      trailerHeading: this.trailerHeading,
+      speed: this.speed,
+      jackknifed: this.jackknifed,
+    };
+  }
+
+  restore(s: ArticSnapshot): void {
+    this.x = s.x;
+    this.y = s.y;
+    this.heading = s.heading;
+    this.trailerHeading = s.trailerHeading;
+    this.speed = s.speed;
+    this.jackknifed = s.jackknifed;
   }
 
   /** Drain events raised since the last call (gear changes, jackknife). */

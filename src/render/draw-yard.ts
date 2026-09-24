@@ -3,7 +3,8 @@ import { theme } from '../config/theme.ts';
 import { DEG } from '../core/math.ts';
 import type { Bay, YardLayout } from '../game/yard.ts';
 
-let tarmacPattern: CanvasPattern | null = null;
+// Patterns belong to the context that made them (main view, share card…).
+const tarmacPatterns = new WeakMap<CanvasRenderingContext2D, CanvasPattern | null>();
 const PATTERN_PX_PER_M = 24;
 
 function makeTarmacPattern(ctx: CanvasRenderingContext2D): CanvasPattern | null {
@@ -84,7 +85,8 @@ function drawBay(ctx: CanvasRenderingContext2D, bay: Bay): void {
 }
 
 export function drawYard(ctx: CanvasRenderingContext2D, yard: YardLayout): void {
-  if (!tarmacPattern) tarmacPattern = makeTarmacPattern(ctx);
+  if (!tarmacPatterns.has(ctx)) tarmacPatterns.set(ctx, makeTarmacPattern(ctx));
+  const tarmacPattern = tarmacPatterns.get(ctx);
 
   // Grass verge surrounding the yard.
   ctx.fillStyle = theme.yardGrass;

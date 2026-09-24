@@ -1,18 +1,21 @@
 /**
- * Yard Master – stage 1: handling prototype.
- * One truck, one empty yard, debug overlay. No collisions or scoring yet.
+ * Yard Master – stage 2: collisions, scoring, results and share card.
  */
+import { RULES } from './config/rules.ts';
 import { SIMULATION } from './config/vehicle.ts';
 import { loadTheme, theme } from './config/theme.ts';
 import { Keyboard } from './core/input.ts';
-import { DEG, damp, lerp } from './core/math.ts';
+import { damp, lerp } from './core/math.ts';
+import { Session, type SessionEvent } from './game/session.ts';
+import { loadSave, recordResult } from './game/storage.ts';
 import { PROTOTYPE_YARD } from './game/yard.ts';
-import { Artic } from './physics/artic.ts';
 import { Camera } from './render/camera.ts';
 import { DebugOverlay } from './render/debug.ts';
+import { drawObstacles } from './render/draw-obstacles.ts';
 import { drawArtic } from './render/draw-vehicle.ts';
 import { drawYard } from './render/draw-yard.ts';
-import { banner, drawHud } from './render/hud.ts';
+import { banner, drawBayGuide, drawHud, drawRunStats, Toasts } from './render/hud.ts';
+import { hideScreens, initScreens, isScreenOpen, showFail, showResults } from './ui/screens.ts';
 
 loadTheme();
 
@@ -21,11 +24,12 @@ const ctx = canvas.getContext('2d', { alpha: false })!;
 const pauseEl = document.getElementById('pause')!;
 const focusHint = document.getElementById('focus-hint')!;
 
-const yard = PROTOTYPE_YARD;
-const artic = new Artic();
+const session = new Session(PROTOTYPE_YARD);
+const artic = session.artic;
 const camera = new Camera();
 const keys = new Keyboard();
 const debug = new DebugOverlay();
+const toasts = new Toasts();
 
 let viewW = 0;
 let viewH = 0;
@@ -33,6 +37,9 @@ let dpr = 1;
 let paused = false;
 /** 0 → camera centred on the rig, 1 → biased towards the trailer rear. */
 let lookBehind = 0;
+/** What to show once the end-of-run delay has passed. */
+let pendingScreen: (() => void) | null = null;
+let endBanner: { text: string; colour: string } | null = null;
 
 // ---- Canvas sizing / devicePixelRatio ---------------------------------------
 
@@ -50,8 +57,12 @@ resize();
 // ---- Game state -------------------------------------------------------------
 
 function restart(): void {
-  const s = yard.spawn;
-  artic.resetFromTrailerRear(s.x, s.y, s.heading * DEG, s.articulation ?? 0);
+  session.reset();
+  pendingScreen = null;
+  endBanner = null;
+  lookBehind = 0;
+  hideScreens();
+  toasts.clear();
   debug.clearTrails();
   camera.follow(cameraTarget(), true);
   setPaused(false);
@@ -70,21 +81,50 @@ function cameraTarget() {
   return { x: lerp(mid.x, r.x, 0.45 * lookBehind), y: lerp(mid.y, r.y, 0.45 * lookBehind) };
 }
 
+function handleEvent(e: SessionEvent): void {
+  switch (e.type) {
+    case 'contact':
+      toasts.show(`Contact with the ${e.label} – +${RULES.contact.penaltySeconds}s`, theme.uiWarn);
+      camera.shake(0.18);
+      break;
+    case 'buffers':
+      toasts.show('On the buffers', theme.uiGood, 1.4);
+      break;
+    case 'message':
+      toasts.show(e.text, theme.uiWarn, 3);
+      break;
+    case 'fail':
+      camera.shake(e.title === 'HEAVY CONTACT' ? 0.6 : 0.2);
+      endBanner = { text: e.title, colour: theme.uiBad };
+      pendingScreen = () => showFail(e.title, e.reason);
+      break;
+    case 'success': {
+      const r = e.result;
+      const newBest = recordResult(r.levelId, r.stars, r.total, r.shunts);
+      const best = loadSave().levels[r.levelId];
+      endBanner = { text: 'DELIVERED', colour: theme.uiGood };
+      pendingScreen = () => void showResults(r, session, best, newBest);
+      break;
+    }
+  }
+}
+
 // ---- UI wiring -----------------------------------------------------------------
 
+initScreens({ onRetry: restart });
 document.getElementById('resume')!.addEventListener('click', () => setPaused(false));
 document.getElementById('restart')!.addEventListener('click', restart);
 
 // Auto-pause when the tab is hidden (the browser also stops rAF then).
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) setPaused(true);
+  if (document.hidden && !isScreenOpen()) setPaused(true);
 });
 
 // Inside an iframe the game needs focus before it gets key events.
 canvas.addEventListener('pointerdown', () => canvas.focus());
 window.addEventListener('focus', () => focusHint.classList.add('hidden'));
 window.addEventListener('blur', () => {
-  if (!paused) focusHint.classList.remove('hidden');
+  if (!paused && !isScreenOpen()) focusHint.classList.remove('hidden');
 });
 
 canvas.addEventListener(
@@ -97,11 +137,12 @@ canvas.addEventListener(
 );
 
 function handleKeys(): void {
-  if (keys.wasPressed('Escape')) setPaused(!paused);
   if (keys.wasPressed('KeyR')) restart();
   if (keys.wasPressed('Backquote') || keys.wasPressed('F3')) debug.enabled = !debug.enabled;
+  if (isScreenOpen()) return;
+  if (keys.wasPressed('Escape')) setPaused(!paused);
   if (paused) return;
-  if (keys.wasPressed('Space')) artic.handbrake = !artic.handbrake;
+  if (keys.wasPressed('Space')) session.toggleHandbrake();
   if (keys.wasPressed('Equal') || keys.wasPressed('NumpadAdd')) camera.zoomBy(1.15);
   if (keys.wasPressed('Minus') || keys.wasPressed('NumpadSubtract')) camera.zoomBy(1 / 1.15);
 }
@@ -115,34 +156,52 @@ function update(dt: number): void {
   const steps = Math.max(1, Math.ceil(dt / SIMULATION.maxStep));
   const h = dt / steps;
   for (let i = 0; i < steps; i++) {
-    artic.step(h, input);
+    session.step(h, input);
     if (debug.enabled) debug.record(artic);
   }
-  artic.takeEvents(); // gear changes / jackknife: consumed by scoring in stage 2
+  for (const e of session.takeEvents()) handleEvent(e);
+  if (artic.handbrakeNag) toasts.show('Handbrake on – press Space to release', theme.uiWarn, 0.6);
+
+  if (pendingScreen) {
+    const delay = session.state === 'success' ? RULES.resultsDelay : RULES.failDelay;
+    if (session.stateTime >= delay) {
+      pendingScreen();
+      pendingScreen = null;
+    }
+  }
 
   const wantBehind = artic.gear === 'R' ? 1 : 0;
   lookBehind += (wantBehind - lookBehind) * damp(1.5, dt);
   camera.follow(cameraTarget());
 }
 
-function render(): void {
+function render(dt: number): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = theme.yardGrass;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   camera.apply(ctx, viewW, viewH, dpr);
-  drawYard(ctx, yard);
+  drawYard(ctx, session.yard);
+  drawObstacles(ctx, session.obstacles);
   drawArtic(ctx, artic);
-  debug.drawWorld(ctx, artic);
+  debug.drawWorld(
+    ctx,
+    artic,
+    session.obstacles.filter((o) => !o.hit).map((o) => o.box),
+  );
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawHud(ctx, artic, viewW, viewH);
+  const statsBottom = drawRunStats(ctx, session, viewW);
+  if (session.state === 'driving' && session.bayCheck.near) {
+    drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
+  }
+  toasts.draw(ctx, paused ? 0 : dt, viewW, viewH);
   debug.drawScreen(ctx, artic);
-  drawHelp();
+  if (!debug.enabled && viewW > 700) drawHelp();
 
-  if (artic.jackknifed) {
-    banner(ctx, viewW / 2, viewH * 0.4, 'JACKKNIFED', theme.uiBad, Math.min(64, viewW / 9));
-    banner(ctx, viewW / 2, viewH * 0.4 + Math.min(64, viewW / 9) * 1.5, 'Press R to try again', '#fff', 18);
+  if (endBanner && !isScreenOpen()) {
+    banner(ctx, viewW / 2, viewH * 0.42, endBanner.text, endBanner.colour, Math.min(64, viewW / 9));
   }
 }
 
@@ -173,13 +232,14 @@ function frame(now: number): void {
   if (!paused) update(dt);
   camera.update(dt, viewW, viewH);
   debug.tickFps(dt);
-  render();
+  render(dt);
   keys.endFrame();
   requestAnimationFrame(frame);
 }
 
 restart();
-canvas.focus();
+// Dev-only hook for automated play-testing; stripped from production builds.
+if (import.meta.env.DEV) (window as unknown as { __session: Session }).__session = session;
 // In an iframe the page often starts without keyboard focus: say so up front.
 if (!document.hasFocus()) focusHint.classList.remove('hidden');
 requestAnimationFrame((t) => {
