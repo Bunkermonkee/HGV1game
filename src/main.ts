@@ -172,16 +172,41 @@ function openTitle(): void {
   showTitle();
 }
 
-/** Testing aid: open the game with #unlock-all to play any level (not saved). */
-const UNLOCK_ALL = location.hash === '#unlock-all';
+/**
+ * Testing aid: add #unlock-all (or #unlockall) to the address to play any
+ * level. Nothing extra is saved. Checked every time the level select opens,
+ * so adding it to an already-open page works, and when the game is embedded
+ * in an iframe the host page's address counts too (same domain only).
+ */
+function unlockAllRequested(): boolean {
+  const matches = (loc: Location) => /unlock[-_]?all/i.test(loc.hash + loc.search);
+  if (matches(location)) return true;
+  try {
+    return window.parent !== window && matches(window.parent.location);
+  } catch {
+    return false; // host page on another domain: its address can't be read
+  }
+}
 
 function openLevelSelect(): void {
   mode = 'menu';
   setPaused(false);
   hideScreens();
   const save = loadSave();
-  if (UNLOCK_ALL) save.unlocked = LEVELS.length;
+  if (unlockAllRequested()) save.unlocked = LEVELS.length;
   showLevelSelect(LEVELS, save, levelIndex);
+}
+
+// Typing #unlock-all into the address bar doesn't reload the page, so
+// refresh the level select if it's showing.
+function refreshLevelSelect(): void {
+  if (!document.getElementById('select')!.classList.contains('hidden')) openLevelSelect();
+}
+window.addEventListener('hashchange', refreshLevelSelect);
+try {
+  if (window.parent !== window) window.parent.addEventListener('hashchange', refreshLevelSelect);
+} catch {
+  // Cross-domain host page: nothing to listen to.
 }
 
 function openBriefing(index: number): void {
