@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#111418" />
+    <title>Yard Master – HGV1 Radio</title>
+    <link rel="stylesheet" href="./styles/theme.css" />
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" tabindex="0" aria-label="Yard Master game"></canvas>
+
+      <div id="pause" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <div class="card">
+          <h1 id="pause-title">Paused</h1>
+          <button id="resume" class="btn primary" type="button">Resume</button>
+          <button id="restart" class="btn" type="button">Restart</button>
+        </div>
+      </div>
+
+      <div id="focus-hint" class="hint hidden">Click or tap the yard to take control</div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

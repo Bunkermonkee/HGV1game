@@ -1,0 +1,40 @@
+/*
+ * Yard Master theme – the ONE place to set brand colours.
+ * Placeholder values: swap in HGV1 Radio's brand colours here.
+ * The canvas renderer reads these variables at start-up, so the game art
+ * and the HTML screens always match.
+ */
+:root {
+  /* Brand */
+  --brand-primary: #e30613;      /* placeholder: HGV1 main colour */
+  --brand-secondary: #ffd200;    /* placeholder: accent / highlights */
+  --brand-dark: #111418;
+  --brand-light: #ffffff;
+
+  /* UI */
+  --ui-bg: rgba(12, 14, 18, 0.88);
+  --ui-panel: #1b1f26;
+  --ui-text: #ffffff;
+  --ui-text-muted: #b7bec9;
+  --ui-good: #2ecc71;
+  --ui-warn: #ffb000;
+  --ui-bad: #ff3b30;
+  --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --ui-font-display: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+
+  /* Vehicle livery (plain, unbranded) */
+  --cab-colour: #e30613;
+  --cab-roof: #c10510;
+  --trailer-curtain: #2f5d8a;
+  --trailer-roof: #dfe4ea;
+
+  /* Yard */
+  --yard-tarmac: #4a4d52;
+  --yard-line-white: #f2f2f2;
+  --yard-line-yellow: #ffcc00;
+  --yard-kerb: #9a9a96;
+  --yard-grass: #4f7a3a;
+  --yard-building: #5d6670;
+  --yard-building-roof: #707a85;
+  --yard-dock-door: #8c96a0;
+}
