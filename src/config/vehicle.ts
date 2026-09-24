@@ -64,6 +64,8 @@ export const STEERING = {
   selfCentreFullSpeed: 2.0,
   /** Turns of the steering wheel from centre to full lock (HUD wheel only). */
   wheelTurnsToLock: 1.25,
+  /** On-screen touch wheel: degrees of drag from centre to full lock (shorter than a real wheel). */
+  touchWheelDegreesToLock: 270,
 };
 
 export const SPEED = {

@@ -2,10 +2,12 @@
  * Yard Master – entry point: screens, game loop, camera and rendering.
  */
 import { RULES } from './config/rules.ts';
-import { SIMULATION } from './config/vehicle.ts';
+import { SIMULATION, STEERING } from './config/vehicle.ts';
 import { loadTheme, theme } from './config/theme.ts';
+import { GamepadInput, moveFocus, PAD } from './core/gamepad.ts';
 import { Keyboard } from './core/input.ts';
 import { DEG, damp, lerp, type Vec2 } from './core/math.ts';
+import { TouchControls } from './core/touch.ts';
 import { Session, type SessionEvent } from './game/session.ts';
 import { loadSave, recordResult, saveSettings } from './game/storage.ts';
 import { Tutorial } from './game/tutorial.ts';
@@ -19,7 +21,16 @@ import { drawArtic } from './render/draw-vehicle.ts';
 import { drawYard } from './render/draw-yard.ts';
 import { banner, drawBayGuide, drawHud, drawRunStats, drawTip, hudHeight, Toasts } from './render/hud.ts';
 import { Mirrors } from './render/mirrors.ts';
-import { hideMenus, initMenus, setProViewLabel, showBriefing, showLevelSelect, showTitle } from './ui/menus.ts';
+import {
+  hideMenus,
+  initMenus,
+  setControlsNote,
+  setProViewLabel,
+  showBriefing,
+  showLevelSelect,
+  showTitle,
+} from './ui/menus.ts';
+import type { DriveInput } from './physics/artic.ts';
 import { hideScreens, initScreens, isScreenOpen, showFail, showResults } from './ui/screens.ts';
 
 loadTheme();
@@ -29,19 +40,33 @@ const ctx = canvas.getContext('2d', { alpha: false })!;
 const pauseEl = document.getElementById('pause')!;
 const focusHint = document.getElementById('focus-hint')!;
 
-/** Control names substituted into tutorial text. Touch labels arrive with mobile controls. */
-const CONTROL_LABELS = { left: '← / A', right: '→ / D', forward: '↑ / W', reverse: '↓ / S', handbrake: 'Space' };
+/** Control names substituted into tutorial and HUD text, per input device. */
+const LABELS = {
+  keyboard: { left: '← / A', right: '→ / D', forward: '↑ / W', reverse: '↓ / S', handbrake: 'Space' },
+  touch: { left: 'the wheel left', right: 'the wheel right', forward: 'the FWD pedal', reverse: 'the REV pedal', handbrake: 'the P button' },
+  gamepad: { left: 'the stick left', right: 'the stick right', forward: 'RT', reverse: 'LT', handbrake: 'A' },
+};
 
 const camera = new Camera();
 const keys = new Keyboard();
 const debug = new DebugOverlay();
+const gamepad = new GamepadInput();
+const touch = new TouchControls({
+  onHandbrake: () => {
+    if (mode === 'play' && !paused) session.toggleHandbrake();
+  },
+  onPause: () => {
+    if (mode === 'play' && !isScreenOpen()) setPaused(true);
+  },
+  onFullscreen: toggleFullscreen,
+});
 const toasts = new Toasts();
 const atmosphere = new Atmosphere();
 const mirrors = new Mirrors();
 
 let levelIndex = 0;
 let session = new Session(LEVELS[0]);
-let tutorial = new Tutorial(LEVELS[0].tutorial, CONTROL_LABELS);
+let tutorial = new Tutorial(LEVELS[0].tutorial, LABELS.keyboard);
 
 type Mode = 'menu' | 'briefing' | 'play';
 let mode: Mode = 'menu';
@@ -60,6 +85,35 @@ setProViewLabel(mirrors.enabled);
 
 // ---- Canvas sizing / devicePixelRatio ---------------------------------------
 
+let touchLayout = touch.layout(window.innerWidth, window.innerHeight);
+let rotateDismissed = false;
+
+function controlLabels() {
+  return touch.active ? LABELS.touch : gamepad.active ? LABELS.gamepad : LABELS.keyboard;
+}
+
+/** Portrait on a touch device (also inside a landscape-shaped iframe on a portrait phone). */
+function portraitPhone(): boolean {
+  if (!touch.active) return false;
+  const type = screen.orientation?.type;
+  return type ? type.startsWith('portrait') : window.innerHeight > window.innerWidth;
+}
+
+function toggleFullscreen(): void {
+  if (document.fullscreenElement) {
+    void document.exitFullscreen().catch(() => {});
+    return;
+  }
+  document.documentElement
+    .requestFullscreen()
+    .then(() => {
+      // Android Chrome can then hold landscape; elsewhere this just fails quietly.
+      const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+      return o.lock?.('landscape');
+    })
+    .catch(() => {});
+}
+
 function resize(): void {
   // Cap DPR at 2: sharper than that costs fill-rate on phones for no visible gain.
   dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -67,6 +121,7 @@ function resize(): void {
   viewH = canvas.clientHeight;
   canvas.width = Math.round(viewW * dpr);
   canvas.height = Math.round(viewH * dpr);
+  touchLayout = touch.layout(viewW, viewH);
 }
 window.addEventListener('resize', resize);
 resize();
@@ -77,7 +132,7 @@ function loadLevel(index: number): void {
   levelIndex = index;
   const level = LEVELS[index];
   session = new Session(level);
-  tutorial = new Tutorial(level.tutorial, CONTROL_LABELS);
+  tutorial = new Tutorial(level.tutorial, controlLabels());
   resetRun();
 }
 
@@ -202,7 +257,7 @@ document.addEventListener('visibilitychange', () => {
 canvas.addEventListener('pointerdown', () => canvas.focus());
 window.addEventListener('focus', () => focusHint.classList.add('hidden'));
 window.addEventListener('blur', () => {
-  if (mode === 'play' && !paused && !isScreenOpen()) focusHint.classList.remove('hidden');
+  if (mode === 'play' && !paused && !isScreenOpen() && !touch.active) focusHint.classList.remove('hidden');
 });
 
 canvas.addEventListener(
@@ -215,6 +270,27 @@ canvas.addEventListener(
 );
 
 const DRIVE_KEYS = ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'];
+
+/** Gamepad buttons: menus use the d-pad + A; in the cab, A = handbrake, Start = pause. */
+function handlePad(): void {
+  const overlayOpen = mode !== 'play' || paused || isScreenOpen();
+  if (overlayOpen) {
+    if (gamepad.wasPressed(PAD.DOWN) || gamepad.wasPressed(PAD.RIGHT)) moveFocus(1);
+    if (gamepad.wasPressed(PAD.UP) || gamepad.wasPressed(PAD.LEFT)) moveFocus(-1);
+    if (gamepad.wasPressed(PAD.A)) {
+      const el = document.activeElement;
+      if (el instanceof HTMLButtonElement) el.click();
+      else moveFocus(1);
+    }
+    if (gamepad.wasPressed(PAD.START) && paused) setPaused(false);
+    if (mode === 'briefing' && (gamepad.wasPressed(PAD.RT) || gamepad.wasPressed(PAD.LT))) startDriving();
+    return;
+  }
+  if (gamepad.wasPressed(PAD.A)) session.toggleHandbrake();
+  if (gamepad.wasPressed(PAD.START)) setPaused(true);
+  if (gamepad.wasPressed(PAD.Y)) restart();
+  if (gamepad.wasPressed(PAD.X)) toggleProView();
+}
 
 function handleKeys(): void {
   if (keys.wasPressed('Backquote') || keys.wasPressed('F3')) debug.enabled = !debug.enabled;
@@ -285,8 +361,24 @@ function updateCamera(dt: number, snap = false): void {
 
 // ---- Main loop ---------------------------------------------------------------
 
+/**
+ * Merge keyboard, touch and gamepad. Steering: a held touch wheel or a
+ * deflected stick sets the angle directly; otherwise keys/d-pad turn it at
+ * the steering rate (and hands-off lets it self-centre).
+ */
+function readInput(): DriveInput {
+  const k = keys.drive();
+  const t = touch.drive();
+  const g = gamepad.drive();
+  const throttle = Math.sign(k.throttle + t.throttle + (g?.throttle ?? 0));
+  if (t.steerMode === 'absolute') return { ...t, throttle };
+  if (g?.steerMode === 'absolute') return { ...g, throttle };
+  if (k.steer !== 0) return { ...k, throttle };
+  return { steerMode: 'rate', steer: g?.steer ?? 0, throttle };
+}
+
 function update(dt: number): void {
-  const input = keys.drive();
+  const input = readInput();
   // Split the frame into equal sub-steps no larger than maxStep: stable physics
   // and no judder, whatever the display refresh rate.
   const steps = Math.max(1, Math.ceil(dt / SIMULATION.maxStep));
@@ -296,7 +388,9 @@ function update(dt: number): void {
     if (debug.enabled) debug.record(session.artic);
   }
   for (const e of session.takeEvents()) handleEvent(e);
-  if (session.artic.handbrakeNag) toasts.show('Handbrake on – press Space to release', theme.uiWarn, 0.6);
+  if (session.artic.handbrakeNag) {
+    toasts.show(`Handbrake on – press ${controlLabels().handbrake} to release`, theme.uiWarn, 0.6);
+  }
   tutorial.update(session, dt);
 
   if (pendingScreen) {
@@ -341,19 +435,33 @@ function render(dt: number): void {
   if (yard.conditions.rain) atmosphere.drawRain(ctx, viewW, viewH, paused ? 0 : dt);
   if (mode !== 'play') return;
 
-  drawHud(ctx, artic, viewW, viewH);
+  const compact = touch.active;
+  const hudBottom = drawHud(ctx, artic, viewW, viewH, compact);
   const statsBottom = drawRunStats(ctx, session, viewW);
   let guideBottom = statsBottom;
   if (session.state === 'driving' && session.bayCheck.near) {
     drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
     guideBottom = statsBottom + 70;
   }
-  // The tip sits above the gauges; the mirrors fit in the space above that.
-  const tipTop = tutorial.current ? drawTip(ctx, tutorial.current, viewW, viewH) : viewH - hudHeight(viewW, viewH);
-  mirrors.draw(ctx, viewW, dpr, Math.max(90, guideBottom - 40), tipTop - 16, artic, yard, drawWorld);
+  if (compact) {
+    // Touch: tip between the wheel and the pedals; mirrors between the top
+    // HUD and the controls.
+    const left = 14 + touchLayout.wheel + 12;
+    const right = viewW - touchLayout.rightWidth - 12;
+    if (tutorial.current) {
+      if (right - left >= 200) drawTip(ctx, tutorial.current, viewW, viewH, { x: left, width: right - left, bottom: viewH - 14 });
+      else drawTip(ctx, tutorial.current, viewW, viewH, { x: 12, width: viewW - 24, bottom: viewH * 0.5 });
+    }
+    const controlsTop = viewH - 14 - Math.max(touchLayout.wheel, touchLayout.pedalH);
+    mirrors.draw(ctx, viewW, dpr, Math.max(hudBottom + 12, 64), controlsTop - 12, artic, yard, drawWorld);
+  } else {
+    // The tip sits above the gauges; the mirrors fit in the space above that.
+    const tipTop = tutorial.current ? drawTip(ctx, tutorial.current, viewW, viewH) : viewH - hudHeight(viewW, viewH);
+    mirrors.draw(ctx, viewW, dpr, Math.max(90, guideBottom - 40), tipTop - 16, artic, yard, drawWorld);
+  }
   toasts.draw(ctx, paused ? 0 : dt, viewW, viewH);
   debug.drawScreen(ctx, artic);
-  if (!debug.enabled && !mirrors.enabled && viewW > 700) drawHelp();
+  if (!debug.enabled && !mirrors.enabled && !touch.active && viewW > 700) drawHelp();
 
   if (endBanner && !isScreenOpen()) {
     banner(ctx, viewW / 2, viewH * 0.42, endBanner.text, endBanner.colour, Math.min(64, viewW / 9));
@@ -378,13 +486,35 @@ function drawHelp(): void {
   ctx.restore();
 }
 
+const rotateEl = document.getElementById('rotate')!;
+document.getElementById('rotate-dismiss')!.addEventListener('click', () => (rotateDismissed = true));
+let touchShown = false;
+let noteForTouch = false;
+
 let last = performance.now();
 function frame(now: number): void {
   // Clamp long gaps (tab switch, breakpoint) so the truck never teleports.
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  gamepad.poll();
   handleKeys();
-  if (mode === 'play' && !paused) update(dt);
+  handlePad();
+  tutorial.labels = controlLabels();
+
+  const rotate = portraitPhone() && !rotateDismissed;
+  rotateEl.classList.toggle('hidden', !rotate);
+  const showTouch = touch.active && mode === 'play' && !paused && !isScreenOpen() && !rotate;
+  if (showTouch !== touchShown) {
+    touch.setVisible(showTouch);
+    touchShown = showTouch;
+  }
+  if (touch.active !== noteForTouch) {
+    noteForTouch = touch.active;
+    setControlsNote(noteForTouch);
+  }
+  if (showTouch) touch.sync(session.artic.steer / (STEERING.maxAngle * DEG), session.artic.handbrake);
+
+  if (mode === 'play' && !paused && !rotate) update(dt);
   updateCamera(dt);
   debug.tickFps(dt);
   render(dt);

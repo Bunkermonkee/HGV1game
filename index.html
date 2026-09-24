@@ -12,6 +12,35 @@
     <div id="app">
       <canvas id="game" tabindex="0" aria-label="Yard Master game"></canvas>
 
+      <div id="touch" class="touch hidden">
+        <div class="touch-top">
+          <button id="t-fullscreen" class="t-btn hidden" type="button" aria-label="Full screen">⛶</button>
+          <button id="t-pause" class="t-btn" type="button" aria-label="Pause">❚❚</button>
+        </div>
+        <div id="t-wheel" class="t-wheel" role="slider" aria-label="Steering wheel" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0">
+          <svg viewBox="-100 -100 200 200" aria-hidden="true">
+            <circle r="84" fill="none" stroke="#15181c" stroke-width="22" />
+            <circle r="84" fill="none" stroke="#3a3f47" stroke-width="14" />
+            <path d="M -84 0 L -22 0 M 22 0 L 84 0 M 0 22 L 0 84" stroke="#2c3036" stroke-width="16" stroke-linecap="round" />
+            <circle r="26" fill="#23272d" stroke="#4a5058" stroke-width="3" />
+            <rect x="-6" y="-100" width="12" height="20" rx="3" fill="var(--brand-secondary)" />
+          </svg>
+        </div>
+        <div class="t-right">
+          <button id="t-handbrake" class="t-handbrake" type="button" aria-label="Handbrake" aria-pressed="false">P</button>
+          <button id="t-rev" class="t-pedal rev" type="button" aria-label="Reverse pedal"><span class="t-arrow">▼</span>REV</button>
+          <button id="t-fwd" class="t-pedal fwd" type="button" aria-label="Forward pedal"><span class="t-arrow">▲</span>FWD</button>
+        </div>
+      </div>
+
+      <div id="rotate" class="rotate hidden" role="alert">
+        <div class="rotate-card">
+          <div class="rotate-icon" aria-hidden="true"></div>
+          <p><strong>Turn your phone sideways</strong><br />Yard Master plays in landscape.</p>
+          <button id="rotate-dismiss" class="btn small" type="button">Play anyway</button>
+        </div>
+      </div>
+
       <div id="title" class="overlay menu hidden" role="dialog" aria-labelledby="game-title">
         <div class="title-card">
           <div class="hazard" aria-hidden="true"></div>
@@ -20,7 +49,7 @@
           <p class="tagline">Ten yards. One bay each. Back it on straight.</p>
           <button id="btn-play" class="btn primary big" type="button">Play</button>
           <button id="btn-proview" class="btn toggle" type="button" aria-pressed="false">Pro view mirrors: Off</button>
-          <p class="controls-note">← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · Esc pause</p>
+          <p class="controls-note" id="controls-note">← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · Esc pause</p>
         </div>
       </div>
 

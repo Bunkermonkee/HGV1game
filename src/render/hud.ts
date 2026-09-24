@@ -18,13 +18,19 @@ function hudScale(viewW: number, viewH: number): number {
   return Math.min(1.25, Math.max(0.75, Math.min(viewW, viewH) / 480));
 }
 
-export function drawHud(ctx: CanvasRenderingContext2D, artic: Artic, viewW: number, viewH: number): void {
-  const s = hudScale(viewW, viewH);
+/**
+ * Gauges. Desktop: bottom-left, with a steering-wheel indicator. Compact
+ * (touch): top-left, without it – the on-screen wheel shows the steering.
+ * Returns the panel's bottom edge (CSS px).
+ */
+export function drawHud(ctx: CanvasRenderingContext2D, artic: Artic, viewW: number, viewH: number, compact = false): number {
+  const s = hudScale(viewW, viewH) * (compact ? 0.8 : 1);
+  const top = compact ? 10 : viewH - 12 - 110 * s;
   ctx.save();
-  ctx.translate(12, viewH - 12 - 110 * s);
+  ctx.translate(12, top);
   ctx.scale(s, s);
 
-  panel(ctx, 0, 0, 330, 110);
+  panel(ctx, 0, 0, compact ? 240 : 330, 110);
 
   // Gear.
   ctx.textAlign = 'center';
@@ -54,17 +60,21 @@ export function drawHud(ctx: CanvasRenderingContext2D, artic: Artic, viewW: numb
   ctx.fillStyle = artic.handbrake ? '#fff' : '#5c6470';
   ctx.fillText('P', 112, 77);
 
-  drawSteeringWheel(ctx, 186, 50, 30, artic.steer / (STEERING.maxAngle * DEG));
-  ctx.font = `600 11px ${theme.uiFont}`;
-  ctx.fillStyle = '#b7bec9';
-  ctx.fillText('STEER', 186, 92);
+  if (!compact) {
+    drawSteeringWheel(ctx, 186, 50, 30, artic.steer / (STEERING.maxAngle * DEG));
+    ctx.font = `600 11px ${theme.uiFont}`;
+    ctx.fillStyle = '#b7bec9';
+    ctx.fillText('STEER', 186, 92);
+  }
 
-  drawArticulationGauge(ctx, 276, 50, artic.articulation);
+  const gx = compact ? 186 : 276;
+  drawArticulationGauge(ctx, gx, 50, artic.articulation);
   ctx.font = `600 11px ${theme.uiFont}`;
   ctx.fillStyle = '#b7bec9';
-  ctx.fillText('TRAILER', 276, 92);
+  ctx.fillText('TRAILER', gx, 92);
 
   ctx.restore();
+  return top + 110 * s;
 }
 
 function drawSteeringWheel(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, frac: number): void {
@@ -292,16 +302,28 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return lines;
 }
 
-/** Tutorial tip, in a panel just above the gauges (bottom-left). Returns its top edge (CSS px). */
-export function drawTip(ctx: CanvasRenderingContext2D, text: string, viewW: number, viewH: number): number {
+export interface TipArea {
+  /** Left edge and available width (CSS px). */
+  x: number;
+  width: number;
+  /** The tip's bottom edge sits here. */
+  bottom: number;
+}
+
+/**
+ * Tutorial tip panel. Default: just above the desktop gauges (bottom-left).
+ * Returns its top edge (CSS px).
+ */
+export function drawTip(ctx: CanvasRenderingContext2D, text: string, viewW: number, viewH: number, area?: TipArea): number {
   const s = hudScale(viewW, viewH);
-  const w = 330;
+  const w = area ? Math.min(360, area.width / s) : 330;
   ctx.save();
   ctx.font = `600 14px ${theme.uiFont}`;
   const lines = wrapLines(ctx, text, w - 34);
   const h = lines.length * 19 + 20;
-  const top = viewH - 12 - 110 * s - 10 - h * s;
-  ctx.translate(12, top);
+  const top = (area ? area.bottom : viewH - 12 - 110 * s - 10) - h * s;
+  const left = area ? area.x + (area.width - w * s) / 2 : 12;
+  ctx.translate(left, top);
   ctx.scale(s, s);
   ctx.fillStyle = 'rgba(12,14,18,0.88)';
   ctx.beginPath();

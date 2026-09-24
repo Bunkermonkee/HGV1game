@@ -3,8 +3,8 @@
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
 TypeScript, built with Vite into one static folder. No backend, no CDNs.
 
-> **Status: stage 3 – levels.** 10 levels with level select, night, rain and
-> Pro-view mirrors. Touch controls and audio come next. The full
+> **Status: stage 4 – touch controls.** 10 levels, night/rain, Pro-view
+> mirrors, touch and gamepad controls. Audio comes next. The full
 > deploy/WordPress guide will be added at the end.
 
 ## Run it
@@ -29,6 +29,36 @@ npm run preview    # serve dist/ locally
 | `` ` `` or F3 | Debug overlay |
 | V | Pro view mirrors on/off |
 | + / − or mouse wheel | Zoom |
+
+### Touch (phones and tablets, landscape)
+
+Touch mode switches on automatically on touch devices.
+
+- **Steering wheel (bottom-left):** drag round to steer; 270° of drag is
+  full lock (`STEERING.touchWheelDegreesToLock`). Let go and the truck
+  self-centres, with the wheel following it back.
+- **REV / FWD pedals (bottom-right):** hold to drive. They're multi-touch,
+  so you can steer and pedal at once.
+- **P button:** handbrake on/off.
+- **Top-right buttons:** pause and full screen. On Android the full-screen
+  button also locks landscape; the iframe needs `allow="fullscreen"`.
+- **Portrait:** held upright, the phone shows a "turn your phone sideways"
+  prompt (with a "Play anyway" option). This also works inside a
+  landscape-shaped iframe on a portrait phone.
+- **HUD:** the gauges move to a compact panel top-left, and tutorial tips
+  name the on-screen controls.
+
+### Gamepad (standard mapping – Xbox / PlayStation)
+
+| Control | Action |
+| --- | --- |
+| Left stick / d-pad | Steer (the stick sets the angle directly) |
+| RT / LT | Forward / reverse |
+| A | Handbrake (in menus: press the highlighted button) |
+| D-pad (menus) | Move between buttons |
+| Start | Pause |
+| Y | Restart |
+| X | Pro view mirrors |
 
 The brief asked for `D` to toggle debug, but `D` is already "steer right"
 under WASD, so debug uses `` ` `` / F3 instead.
@@ -179,7 +209,7 @@ styles/main.css       UI styles
 src/main.ts           bootstrap, loop, DPR, auto-pause
 src/config/vehicle.ts vehicle tuning constants
 src/config/theme.ts   reads theme.css variables for the canvas
-src/core/             maths helpers, keyboard input
+src/core/             maths helpers, keyboard, touch and gamepad input
 src/physics/          artic kinematics, oriented boxes, SAT collision
 src/render/           camera, yard/vehicle art, HUD, debug overlay,
                       night/rain (atmosphere.ts), mirrors (mirrors.ts)

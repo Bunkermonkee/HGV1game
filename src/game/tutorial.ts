@@ -29,7 +29,8 @@ export class Tutorial {
   private ttl = 0;
   private shown = new Set<TutorialTip>();
   private tips: TutorialTip[];
-  private labels: Record<string, string>;
+  /** Control names for {placeholders}; updated when the input device changes. */
+  labels: Record<string, string>;
 
   constructor(tips: TutorialTip[], labels: Record<string, string>) {
     this.tips = tips;

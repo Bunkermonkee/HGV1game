@@ -33,6 +33,12 @@ export function initMenus(cb: MenuCallbacks): void {
   });
 }
 
+export function setControlsNote(touch: boolean): void {
+  $('controls-note').textContent = touch
+    ? 'Drag the wheel to steer · hold FWD or REV to drive · P for the handbrake · ❚❚ to pause'
+    : '← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · Esc pause';
+}
+
 export function setProViewLabel(on: boolean): void {
   for (const id of ['btn-proview', 'pause-proview']) {
     const b = $(id);
