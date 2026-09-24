@@ -1,12 +1,13 @@
 /**
  * Yard Master – entry point: screens, game loop, camera and rendering.
  */
+import { Sound } from './audio/sound.ts';
 import { RULES } from './config/rules.ts';
-import { SIMULATION, STEERING } from './config/vehicle.ts';
+import { SIMULATION, SPEED, STEERING } from './config/vehicle.ts';
 import { loadTheme, theme } from './config/theme.ts';
 import { GamepadInput, moveFocus, PAD } from './core/gamepad.ts';
 import { Keyboard } from './core/input.ts';
-import { DEG, damp, lerp, type Vec2 } from './core/math.ts';
+import { DEG, MPH_TO_MS, damp, lerp, type Vec2 } from './core/math.ts';
 import { TouchControls } from './core/touch.ts';
 import { Session, type SessionEvent } from './game/session.ts';
 import { loadSave, recordResult, saveSettings } from './game/storage.ts';
@@ -26,6 +27,7 @@ import {
   initMenus,
   setControlsNote,
   setProViewLabel,
+  setSoundLabel,
   showBriefing,
   showLevelSelect,
   showTitle,
@@ -50,15 +52,17 @@ const LABELS = {
 const camera = new Camera();
 const keys = new Keyboard();
 const debug = new DebugOverlay();
+const sound = new Sound();
 const gamepad = new GamepadInput();
 const touch = new TouchControls({
   onHandbrake: () => {
-    if (mode === 'play' && !paused) session.toggleHandbrake();
+    if (mode === 'play' && !paused) toggleHandbrake();
   },
   onPause: () => {
     if (mode === 'play' && !isScreenOpen()) setPaused(true);
   },
   onFullscreen: toggleFullscreen,
+  onSound: () => toggleSound(),
 });
 const toasts = new Toasts();
 const atmosphere = new Atmosphere();
@@ -82,6 +86,16 @@ let endBanner: { text: string; colour: string } | null = null;
 
 mirrors.enabled = loadSave().settings.proView;
 setProViewLabel(mirrors.enabled);
+sound.muted = !loadSave().settings.sound;
+setSoundLabel(!sound.muted);
+
+// Audio may only start from a user gesture: unlock it on the first one.
+for (const type of ['pointerdown', 'keydown', 'touchend']) {
+  window.addEventListener(type, () => sound.unlock(), { capture: true });
+}
+
+/** Last frame's throttle, for the engine note. */
+let lastThrottle = 0;
 
 // ---- Canvas sizing / devicePixelRatio ---------------------------------------
 
@@ -193,6 +207,21 @@ function setPaused(p: boolean): void {
   if (!p && mode === 'play') canvas.focus();
 }
 
+function toggleSound(): void {
+  sound.setMuted(!sound.muted);
+  if (!sound.muted) sound.unlock();
+  setSoundLabel(!sound.muted);
+  const save = loadSave();
+  saveSettings({ ...save.settings, sound: !sound.muted });
+}
+
+/** Handbrake on/off, with the air-brake hiss. */
+function toggleHandbrake(): void {
+  if (session.state !== 'driving') return;
+  session.toggleHandbrake();
+  sound.airBrake(session.artic.handbrake);
+}
+
 function toggleProView(): void {
   mirrors.enabled = !mirrors.enabled;
   setProViewLabel(mirrors.enabled);
@@ -203,6 +232,7 @@ function toggleProView(): void {
 function handleEvent(e: SessionEvent): void {
   switch (e.type) {
     case 'contact':
+      sound.bump(e.label === 'cone');
       toasts.show(`Contact with the ${e.label} – +${RULES.contact.penaltySeconds}s`, theme.uiWarn);
       camera.shake(0.18);
       break;
@@ -213,6 +243,7 @@ function handleEvent(e: SessionEvent): void {
       toasts.show(e.text, theme.uiWarn, 3);
       break;
     case 'fail':
+      sound.crash();
       camera.shake(e.title === 'HEAVY CONTACT' ? 0.6 : 0.2);
       endBanner = { text: e.title, colour: theme.uiBad };
       pendingScreen = () => showFail(e.title, e.reason);
@@ -224,6 +255,7 @@ function handleEvent(e: SessionEvent): void {
       const best = loadSave().levels[r.levelId];
       const hasNext = levelIndex + 1 < LEVELS.length;
       endBanner = { text: 'DELIVERED', colour: theme.uiGood };
+      sound.chime();
       pendingScreen = () => void showResults(r, session, best, newBest, hasNext);
       break;
     }
@@ -244,12 +276,14 @@ initMenus({
   onBackToTitle: openTitle,
   onLevelSelect: openLevelSelect,
   onToggleProView: toggleProView,
+  onToggleSound: toggleSound,
 });
 document.getElementById('resume')!.addEventListener('click', () => setPaused(false));
 document.getElementById('restart')!.addEventListener('click', restart);
 
 // Auto-pause when the tab is hidden (the browser also stops rAF then).
 document.addEventListener('visibilitychange', () => {
+  sound.setPageVisible(!document.hidden);
   if (document.hidden && mode === 'play' && !isScreenOpen()) setPaused(true);
 });
 
@@ -273,6 +307,7 @@ const DRIVE_KEYS = ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'];
 
 /** Gamepad buttons: menus use the d-pad + A; in the cab, A = handbrake, Start = pause. */
 function handlePad(): void {
+  if (gamepad.wasPressed(PAD.BACK)) toggleSound();
   const overlayOpen = mode !== 'play' || paused || isScreenOpen();
   if (overlayOpen) {
     if (gamepad.wasPressed(PAD.DOWN) || gamepad.wasPressed(PAD.RIGHT)) moveFocus(1);
@@ -286,7 +321,7 @@ function handlePad(): void {
     if (mode === 'briefing' && (gamepad.wasPressed(PAD.RT) || gamepad.wasPressed(PAD.LT))) startDriving();
     return;
   }
-  if (gamepad.wasPressed(PAD.A)) session.toggleHandbrake();
+  if (gamepad.wasPressed(PAD.A)) toggleHandbrake();
   if (gamepad.wasPressed(PAD.START)) setPaused(true);
   if (gamepad.wasPressed(PAD.Y)) restart();
   if (gamepad.wasPressed(PAD.X)) toggleProView();
@@ -295,6 +330,7 @@ function handlePad(): void {
 function handleKeys(): void {
   if (keys.wasPressed('Backquote') || keys.wasPressed('F3')) debug.enabled = !debug.enabled;
   if (keys.wasPressed('KeyV')) toggleProView();
+  if (keys.wasPressed('KeyM')) toggleSound();
   if (mode === 'briefing') {
     // A drive key on the briefing card starts the level straight away.
     if (DRIVE_KEYS.some((k) => keys.wasPressed(k))) startDriving();
@@ -305,7 +341,7 @@ function handleKeys(): void {
   if (isScreenOpen()) return;
   if (keys.wasPressed('Escape')) setPaused(!paused);
   if (paused) return;
-  if (keys.wasPressed('Space')) session.toggleHandbrake();
+  if (keys.wasPressed('Space')) toggleHandbrake();
   if (keys.wasPressed('Equal') || keys.wasPressed('NumpadAdd')) camera.zoomBy(1.15);
   if (keys.wasPressed('Minus') || keys.wasPressed('NumpadSubtract')) camera.zoomBy(1 / 1.15);
 }
@@ -379,6 +415,7 @@ function readInput(): DriveInput {
 
 function update(dt: number): void {
   const input = readInput();
+  lastThrottle = input.throttle;
   // Split the frame into equal sub-steps no larger than maxStep: stable physics
   // and no judder, whatever the display refresh rate.
   const steps = Math.max(1, Math.ceil(dt / SIMULATION.maxStep));
@@ -515,6 +552,13 @@ function frame(now: number): void {
   if (showTouch) touch.sync(session.artic.steer / (STEERING.maxAngle * DEG), session.artic.handbrake);
 
   if (mode === 'play' && !paused && !rotate) update(dt);
+  const a = session.artic;
+  sound.update(dt, {
+    running: mode === 'play' && !paused && !rotate && !isScreenOpen(),
+    speedFraction: Math.min(1, Math.abs(a.speed) / (SPEED.maxForwardMph * MPH_TO_MS)),
+    throttle: lastThrottle !== 0 && !a.handbrake,
+    reversing: a.gear === 'R' && session.state === 'driving',
+  });
   updateCamera(dt);
   debug.tickFps(dt);
   render(dt);
@@ -526,7 +570,7 @@ loadLevel(0);
 openTitle();
 // Dev-only hook for automated play-testing; stripped from production builds.
 if (import.meta.env.DEV) {
-  Object.assign(window, { __game: { get session() { return session; }, openBriefing, startDriving } });
+  Object.assign(window, { __game: { get session() { return session; }, openBriefing, startDriving, sound } });
 }
 requestAnimationFrame((t) => {
   last = t;

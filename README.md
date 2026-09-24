@@ -3,8 +3,9 @@
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
 TypeScript, built with Vite into one static folder. No backend, no CDNs.
 
-> **Status: stage 4 – touch controls.** 10 levels, night/rain, Pro-view
-> mirrors, touch and gamepad controls. Audio comes next. The full
+> **Status: stage 5 – audio.** 10 levels, night/rain, Pro-view mirrors,
+> touch and gamepad controls, synthesised sound. The final deploy/WordPress
+> guide comes next. The full
 > deploy/WordPress guide will be added at the end.
 
 ## Run it
@@ -28,6 +29,7 @@ npm run preview    # serve dist/ locally
 | Esc | Pause |
 | `` ` `` or F3 | Debug overlay |
 | V | Pro view mirrors on/off |
+| M | Sound on/off |
 | + / − or mouse wheel | Zoom |
 
 ### Touch (phones and tablets, landscape)
@@ -40,7 +42,7 @@ Touch mode switches on automatically on touch devices.
 - **REV / FWD pedals (bottom-right):** hold to drive. They're multi-touch,
   so you can steer and pedal at once.
 - **P button:** handbrake on/off.
-- **Top-right buttons:** pause and full screen. On Android the full-screen
+- **Top-right buttons:** pause, sound on/off and full screen. On Android the full-screen
   button also locks landscape; the iframe needs `allow="fullscreen"`.
 - **Portrait:** held upright, the phone shows a "turn your phone sideways"
   prompt (with a "Play anyway" option). This also works inside a
@@ -59,6 +61,7 @@ Touch mode switches on automatically on touch devices.
 | Start | Pause |
 | Y | Restart |
 | X | Pro view mirrors |
+| Back / Select | Sound on/off |
 
 The brief asked for `D` to toggle debug, but `D` is already "steer right"
 under WASD, so debug uses `` ` `` / F3 instead.
@@ -139,6 +142,26 @@ route length and shunts as a guide for star targets. (Needs Node 22.6+.)
   you articulate. The setting is saved.
 - **Camera:** it frames the rig and the target bay together when they fit,
   otherwise follows the rig and leans towards the bay.
+
+## Audio (`src/audio/sound.ts`)
+
+All sound is synthesised with the Web Audio API, so there are no audio files
+and nothing extra to download:
+
+- **Engine:** a diesel idle/rev loop that follows the pedals and road speed.
+- **Air brakes:** a hiss when the handbrake goes on, a short "psst" when it
+  comes off.
+- **Reversing beeper:** about one beep a second while in reverse.
+- **Bumps:** a thud on contact, a lighter plastic knock for cones, and a
+  heavier crunch for a heavy hit or a jackknife.
+- **Delivered:** a quiet two-note chime.
+
+Sound only starts after the first tap, click or key press. It is kept quiet
+(`MASTER_VOLUME` = 0.32, peaks well below clipping) because the station's
+radio player may be on the same page. There's a clear mute toggle (title
+screen, pause menu, the 🔊 button on touch, **M** or the gamepad's Back
+button), and the choice is saved. Audio stops when the game is paused and
+when the tab is hidden.
 
 ## Scoring rules (`src/config/rules.ts`)
 

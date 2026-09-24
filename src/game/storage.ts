@@ -9,6 +9,7 @@ export interface LevelRecord {
 
 export interface Settings {
   proView: boolean;
+  sound: boolean;
 }
 
 export interface SaveData {
@@ -19,7 +20,7 @@ export interface SaveData {
 }
 
 function blank(): SaveData {
-  return { levels: {}, unlocked: 1, settings: { proView: false } };
+  return { levels: {}, unlocked: 1, settings: { proView: false, sound: true } };
 }
 
 export function loadSave(): SaveData {

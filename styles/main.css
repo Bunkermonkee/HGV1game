@@ -216,6 +216,7 @@ html, body {
 .tagline { margin: 0 0 6px; color: var(--ui-text-muted); font-size: 16px; }
 .btn.big { font-size: 22px; min-height: 58px; align-self: stretch; }
 .title-card .btn.toggle { align-self: stretch; }
+.title-card .toggles { align-self: stretch; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .btn.toggle[aria-pressed="true"] { border-color: var(--ui-good); color: var(--ui-good); }
 .btn.small { min-height: 40px; font-size: 15px; padding: 6px 14px; }
 .controls-note { margin: 4px 0 0; font-size: 13px; color: var(--ui-text-muted); line-height: 1.5; }

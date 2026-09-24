@@ -13,6 +13,7 @@ export interface TouchCallbacks {
   onHandbrake: () => void;
   onPause: () => void;
   onFullscreen: () => void;
+  onSound: () => void;
 }
 
 function $(id: string): HTMLElement {
@@ -51,6 +52,7 @@ export class TouchControls {
     this.bindPedal($('t-rev'), (on) => (this.rev = on));
     this.bindTap(this.handbrakeBtn, cb.onHandbrake);
     this.bindTap($('t-pause'), cb.onPause);
+    this.bindTap($('t-sound'), cb.onSound);
     const fs = $('t-fullscreen');
     if (document.fullscreenEnabled) {
       fs.classList.remove('hidden');

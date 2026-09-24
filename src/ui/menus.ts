@@ -17,6 +17,7 @@ export interface MenuCallbacks {
   onBackToTitle: () => void;
   onLevelSelect: () => void;
   onToggleProView: () => void;
+  onToggleSound: () => void;
 }
 
 export function initMenus(cb: MenuCallbacks): void {
@@ -27,16 +28,30 @@ export function initMenus(cb: MenuCallbacks): void {
   $('pause-levels').addEventListener('click', cb.onLevelSelect);
   $('btn-proview').addEventListener('click', cb.onToggleProView);
   $('pause-proview').addEventListener('click', cb.onToggleProView);
+  $('btn-sound').addEventListener('click', cb.onToggleSound);
+  $('pause-sound').addEventListener('click', cb.onToggleSound);
   grid.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-index]');
     if (btn && !btn.disabled) cb.onPickLevel(Number(btn.dataset.index));
   });
 }
 
+export function setSoundLabel(on: boolean): void {
+  for (const id of ['btn-sound', 'pause-sound']) {
+    const b = $(id);
+    b.textContent = `Sound: ${on ? 'On' : 'Off'}`;
+    b.setAttribute('aria-pressed', String(on));
+  }
+  const t = $('t-sound');
+  t.textContent = on ? '🔊' : '🔇';
+  t.setAttribute('aria-label', on ? 'Sound on – tap to mute' : 'Sound off – tap to unmute');
+  t.setAttribute('aria-pressed', String(on));
+}
+
 export function setControlsNote(touch: boolean): void {
   $('controls-note').textContent = touch
     ? 'Drag the wheel to steer · hold FWD or REV to drive · P for the handbrake · ❚❚ to pause'
-    : '← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · Esc pause';
+    : '← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · M sound · Esc pause';
 }
 
 export function setProViewLabel(on: boolean): void {

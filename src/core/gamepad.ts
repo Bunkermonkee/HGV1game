@@ -1,13 +1,13 @@
 /**
  * Standard-mapping gamepad (Xbox / PlayStation layout):
  * left stick or d-pad = steer, RT = forward, LT = reverse, A = handbrake,
- * Start = pause, Y = restart, X = mirrors. In menus the d-pad moves between
+ * Start = pause, Y = restart, X = mirrors, Back/Select = sound. In menus the d-pad moves between
  * buttons and A presses the focused one.
  */
 import type { DriveInput } from '../physics/artic.ts';
 
 const DEADZONE = 0.18;
-export const PAD = { A: 0, B: 1, X: 2, Y: 3, LT: 6, RT: 7, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
+export const PAD = { A: 0, B: 1, X: 2, Y: 3, LT: 6, RT: 7, BACK: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 
 export class GamepadInput {
   /** True once a pad has been used this session. */
