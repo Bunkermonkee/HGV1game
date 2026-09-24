@@ -3,9 +3,9 @@
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
 TypeScript, built with Vite into one static folder. No backend, no CDNs.
 
-> **Status: stage 5 – audio.** 10 levels, night/rain, Pro-view mirrors,
-> touch and gamepad controls, synthesised sound. The final deploy/WordPress
-> guide comes next. The full
+> **Status: version 1 complete.** 10 levels, night/rain, Pro-view mirrors,
+> touch and gamepad controls, synthesised sound, share card. See
+> [Deploying](#deploying) and [Version 2 ideas](#version-2-ideas). The full
 > deploy/WordPress guide will be added at the end.
 
 ## Run it
@@ -250,3 +250,99 @@ src/share/            share card image, share/download/copy
 src/ui/screens.ts     results (delivery note) and fail screens
 src/ui/menus.ts       title, level select, briefing
 ```
+
+## Deploying
+
+1. **Brand it first.**
+   - Colours: `styles/theme.css`.
+   - Station name and share URL: `src/config/brand.ts`. Point `shareUrl` at
+     the page the game is embedded on.
+   - Logo: put it in `public/` (e.g. `public/logo.png`) and set `logoSrc`
+     to `'./logo.png'`.
+2. **Build:** `npm install && npm run build`. The whole game is now in `dist/`
+   (`index.html` + `assets/`), about 100 KB in total.
+3. **Upload** the *contents* of `dist/` to a folder on your web server, e.g.
+   `/games/yardmaster/`. Use SFTP or your host's file manager, not the
+   WordPress media library. All paths are relative, so any folder works
+   without rebuilding.
+4. **Check** it directly at `https://your-site/games/yardmaster/`.
+
+Tips:
+
+- Host it on the **same domain** as the WordPress site. Some browsers
+  (notably Safari) restrict storage in iframes from other domains, which
+  would lose players' saved progress and stars.
+- Caching: the files in `assets/` have hashed names, so they can be cached
+  for a year. Keep `index.html` on a short cache so updates show up.
+
+## Embedding in WordPress / Elementor
+
+Add an **HTML** widget (Elementor) or a **Custom HTML** block (WordPress
+editor) and paste:
+
+```html
+<div class="yardmaster-wrap">
+  <iframe
+    src="/games/yardmaster/"
+    title="Yard Master – HGV reversing game"
+    allow="fullscreen; web-share; clipboard-write; autoplay"
+    allowfullscreen
+    loading="lazy"></iframe>
+</div>
+<style>
+  .yardmaster-wrap { position: relative; width: 100%; max-width: 1100px; margin: 0 auto; padding-top: 56.25%; }
+  .yardmaster-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 12px; }
+</style>
+```
+
+- The wrapper keeps a 16:9 shape at any width (`padding-top: 56.25%`).
+- The `allow` attribute matters:
+  - `fullscreen` enables the full-screen button.
+  - `web-share` lets the Share button open the phone's share sheet.
+  - `clipboard-write` makes Copy text work.
+  - `autoplay` lets sound start after the first tap.
+- On a phone held upright the game asks the player to turn sideways, and
+  the full-screen button makes it fill the screen.
+
+## Version 2 ideas
+
+Station and community:
+
+- Weekly leaderboards (needs a small backend, e.g. a serverless function +
+  key-value store), with on-air shout-outs for the winners.
+- A daily yard: one generated layout per day, the same for everyone.
+- Challenge links: `#level-7-beat-38s` sets up a rival time to beat.
+- Haulier leagues, where drivers enter a company name.
+- An in-cab radio button that plays the station's live stream inside the
+  game.
+- Sponsor slots: curtain-side liveries on parked trailers and yard signage.
+
+Gameplay:
+
+- A coupling challenge: reverse under a trailer and line up the kingpin
+  with the fifth wheel.
+- More rigs: a rigid with a drawbar trailer (two pivots – properly hard),
+  a double-decker, a steer-axle trailer, a 6x2 tractor.
+- Mirrors-only mode, with no top-down view.
+- A replay of each run with the wheel tracks drawn, and a ghost of your
+  best run.
+- A banksman giving hand signals, and moving yard traffic.
+- A trailer path prediction line as a beginner assist, and a bay-guide-off
+  "pro" setting.
+- An accuracy score (e.g. "0.04 m off centre") on the delivery note as a
+  tie-breaker.
+- An in-browser level editor that exports the level JSON and runs the
+  proof checker.
+
+Technical:
+
+- Fixed-timestep, deterministic physics, so replays, ghosts and
+  server-checked leaderboard scores are possible.
+- Cache the static yard in an off-screen layer (helps low-end phones,
+  especially with mirrors on).
+- Automated tests (physics, bay check, scoring) and a browser smoke test in
+  CI alongside `check-levels`.
+- Privacy-friendly analytics (with consent) to see which levels players
+  fail and quit on, then tune the star times.
+- Accessibility: colour-blind-safe gauge colours, an option to turn off
+  camera shake, and on-screen cues for the beeper and contacts.
