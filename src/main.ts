@@ -101,11 +101,16 @@ function openTitle(): void {
   showTitle();
 }
 
+/** Testing aid: open the game with #unlock-all to play any level (not saved). */
+const UNLOCK_ALL = location.hash === '#unlock-all';
+
 function openLevelSelect(): void {
   mode = 'menu';
   setPaused(false);
   hideScreens();
-  showLevelSelect(LEVELS, loadSave(), levelIndex);
+  const save = loadSave();
+  if (UNLOCK_ALL) save.unlocked = LEVELS.length;
+  showLevelSelect(LEVELS, save, levelIndex);
 }
 
 function openBriefing(index: number): void {

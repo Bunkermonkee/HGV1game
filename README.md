@@ -56,6 +56,8 @@ reloads.
 | 10 | The Monday Morning | Tight, blind side, trailers both sides, tough targets |
 
 Levels unlock one at a time; stars and best times are saved per level.
+For testing, open the game with `#unlock-all` on the end of the URL to play
+any level (nothing extra is saved).
 
 ### Adding or editing a level
 
