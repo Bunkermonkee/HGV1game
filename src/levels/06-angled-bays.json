@@ -1,0 +1,26 @@
+{
+  "id": "06-angled-bays",
+  "name": "Sawtooth",
+  "brief": "A busy distribution centre with 45° sawtooth bays. Get onto Bay 5 without clipping your neighbours.",
+  "width": 80,
+  "height": 56,
+  "buildings": [{ "x": 0, "y": 0, "w": 80, "h": 8.4 }],
+  "docks": [{ "x": 10, "y": 12, "along": 0, "heading": 45, "count": 8, "length": 15, "pods": true }],
+  "targetBay": "5",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "4", "colour": "#8a3b2f" },
+    { "kind": "trailer-in-bay", "bay": "6", "colour": "#3c6b44" },
+    { "kind": "trailer-in-bay", "bay": "2", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "8", "colour": "#2f4f7a" },
+    { "kind": "trailer", "x": 6, "y": 51, "heading": 0, "colour": "#6b6f76" },
+    { "kind": "trailer", "x": 6, "y": 47, "heading": 0, "colour": "#7a5c2f" },
+    { "kind": "bollard", "x": 76, "y": 12 }
+  ],
+  "spawn": { "x": 55.11, "y": 38.63, "heading": 79, "articulation": 4.2 },
+  "stars": { "three": { "shunts": 0, "time": 60 }, "two": { "shunts": 2, "time": 110 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 12 },
+    { "throttle": 1, "steer": 0.45, "dist": 9 },
+    { "throttle": 1, "steer": 0, "dist": 12 }
+  ]
+}

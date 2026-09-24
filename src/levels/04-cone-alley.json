@@ -1,0 +1,36 @@
+{
+  "id": "04-cone-alley",
+  "name": "Cone Alley",
+  "brief": "Sight side again, but the yard's been coned off for resurfacing. Less room to swing – mind the cones.",
+  "width": 90,
+  "height": 48,
+  "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
+  "docks": [{ "x": 20, "y": 8, "along": 0, "heading": 90, "count": 10 }],
+  "targetBay": "6",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "7", "colour": "#3c6b44" },
+    { "kind": "trailer-in-bay", "bay": "3", "colour": "#2f4f7a" },
+    { "kind": "cone", "x": 10, "y": 37 },
+    { "kind": "cone", "x": 14, "y": 37 },
+    { "kind": "cone", "x": 18, "y": 37 },
+    { "kind": "cone", "x": 22, "y": 37 },
+    { "kind": "cone", "x": 26, "y": 37 },
+    { "kind": "cone", "x": 30, "y": 37 },
+    { "kind": "cone", "x": 34, "y": 37 },
+    { "kind": "cone", "x": 38, "y": 37 },
+    { "kind": "cone", "x": 42, "y": 37 },
+    { "kind": "cone", "x": 46, "y": 37 },
+    { "kind": "cone", "x": 50, "y": 37 },
+    { "kind": "cone", "x": 54, "y": 37 },
+    { "kind": "cone", "x": 58, "y": 37 },
+    { "kind": "cone", "x": 62, "y": 37 }
+  ],
+  "markings": [{ "kind": "hatch", "x": 8, "y": 38, "w": 56, "h": 5 }],
+  "spawn": { "x": 28.71, "y": 28.11, "heading": 192.9, "articulation": 7.6 },
+  "stars": { "three": { "shunts": 0, "time": 55 }, "two": { "shunts": 2, "time": 100 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 3 },
+    { "throttle": 1, "steer": 0.85, "dist": 12.5 },
+    { "throttle": 1, "steer": 0, "dist": 16 }
+  ]
+}

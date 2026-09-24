@@ -30,7 +30,7 @@ export function checkBay(artic: Artic, bay: Bay): BayCheck {
   const lateralOk = Math.abs(lateral) <= RULES.bay.maxLateral;
   const gapOk = rearGap >= -0.05 && rearGap <= RULES.bay.maxRearGap;
   return {
-    near: along > -1 && along < bay.length + 8 && Math.abs(lateral) < bay.width * 1.5,
+    near: along > -1 && along < bay.length + 4 && Math.abs(lateral) < bay.width * 1.5,
     angleErr,
     lateral,
     rearGap,

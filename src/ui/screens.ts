@@ -20,11 +20,16 @@ let previewUrl = '';
 
 export interface ScreenCallbacks {
   onRetry: () => void;
+  onNext: () => void;
+  onLevelSelect: () => void;
 }
 
 export function initScreens(cb: ScreenCallbacks): void {
   $('btn-again').addEventListener('click', cb.onRetry);
   $('btn-retry').addEventListener('click', cb.onRetry);
+  $('btn-next').addEventListener('click', cb.onNext);
+  $('btn-levels').addEventListener('click', cb.onLevelSelect);
+  $('btn-fail-levels').addEventListener('click', cb.onLevelSelect);
 
   shareBtn.addEventListener('click', async () => {
     if (!current.file) return;
@@ -68,7 +73,9 @@ export async function showResults(
   session: Session,
   best: LevelRecord | undefined,
   newBest: boolean,
+  hasNext: boolean,
 ): Promise<void> {
+  $('btn-next').classList.toggle('hidden', !hasNext);
   const now = new Date();
   $('note-no').textContent = `No. YM-${now.getTime().toString(36).slice(-6).toUpperCase()}`;
   $('note-date').textContent = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -117,7 +124,7 @@ export async function showResults(
   previewImg.alt = `Share card: ${r.levelName}, Bay ${r.bay}, ${shortTime(r.total)}, ${shuntWord}, ${starString(r.stars)}`;
   // Web Share with files on phones; download + copy everywhere else.
   shareBtn.classList.toggle('hidden', !(current.file && canShareImage(current.file)));
-  (shareBtn.classList.contains('hidden') ? $('btn-download') : shareBtn).focus();
+  (hasNext ? $('btn-next') : shareBtn.classList.contains('hidden') ? $('btn-download') : shareBtn).focus();
 }
 
 export function showFail(title: string, reason: string): void {

@@ -15,6 +15,7 @@ export class Camera {
 
   private targetX = 0;
   private targetY = 0;
+  private targetView = 42;
   private shakeAmount = 0;
   private shakeX = 0;
   private shakeY = 0;
@@ -33,10 +34,17 @@ export class Camera {
     }
   }
 
+  /** Metres across the shorter screen side to aim for (damped). */
+  setView(metres: number, snap = false): void {
+    this.targetView = metres;
+    if (snap) this.viewMetres = metres;
+  }
+
   update(dt: number, viewW: number, viewH: number): void {
     const k = damp(3, dt);
     this.x += (this.targetX - this.x) * k;
     this.y += (this.targetY - this.y) * k;
+    this.viewMetres += (this.targetView - this.viewMetres) * damp(1.5, dt);
     const fit = Math.min(viewW, viewH) / (this.viewMetres * PIXELS_PER_METRE);
     this.scale = PIXELS_PER_METRE * fit * this.userZoom;
     this.shakeAmount *= Math.exp(-8 * dt);

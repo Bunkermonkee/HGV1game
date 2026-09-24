@@ -1,0 +1,24 @@
+{
+  "id": "09-wet-wednesday",
+  "name": "Wet Wednesday",
+  "brief": "Chucking it down. Poor visibility, and the drive wheels scrabble when you pull forward. Bay 5, blind side.",
+  "width": 90,
+  "height": 50,
+  "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
+  "docks": [{ "x": 10, "y": 8, "along": 0, "heading": 90, "count": 12 }],
+  "targetBay": "5",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "4", "colour": "#3c6b44" },
+    { "kind": "trailer-in-bay", "bay": "7", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "11", "colour": "#8a3b2f" },
+    { "kind": "kerb", "x": 70, "y": 44, "length": 14, "width": 4 }
+  ],
+  "conditions": { "rain": true, "forwardGrip": 0.7, "visibility": 30 },
+  "spawn": { "x": 41.43, "y": 37.57, "heading": 356.8, "articulation": -5.9 },
+  "stars": { "three": { "shunts": 0, "time": 65 }, "two": { "shunts": 2, "time": 120 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 8 },
+    { "throttle": 1, "steer": -0.6, "dist": 17 },
+    { "throttle": 1, "steer": 0, "dist": 14 }
+  ]
+}

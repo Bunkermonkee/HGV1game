@@ -1,4 +1,4 @@
-/** Progress saved in localStorage. Every access is guarded: storage can be blocked. */
+/** Progress and settings saved in localStorage. Every access is guarded: storage can be blocked. */
 const KEY = 'yardmaster.v1';
 
 export interface LevelRecord {
@@ -7,13 +7,19 @@ export interface LevelRecord {
   bestShunts: number;
 }
 
+export interface Settings {
+  proView: boolean;
+}
+
 export interface SaveData {
   levels: Record<string, LevelRecord>;
+  /** Highest level number the player may start (levels unlock in order). */
   unlocked: number;
+  settings: Settings;
 }
 
 function blank(): SaveData {
-  return { levels: {}, unlocked: 1 };
+  return { levels: {}, unlocked: 1, settings: { proView: false } };
 }
 
 export function loadSave(): SaveData {
@@ -21,7 +27,11 @@ export function loadSave(): SaveData {
     const raw = localStorage.getItem(KEY);
     if (!raw) return blank();
     const data = JSON.parse(raw) as Partial<SaveData>;
-    return { levels: data.levels ?? {}, unlocked: data.unlocked ?? 1 };
+    return {
+      levels: data.levels ?? {},
+      unlocked: Math.max(1, data.unlocked ?? 1),
+      settings: { ...blank().settings, ...data.settings },
+    };
   } catch {
     return blank();
   }
@@ -35,8 +45,11 @@ export function writeSave(data: SaveData): void {
   }
 }
 
-/** Record a finished run. Returns true if it beat the previous best time. */
-export function recordResult(levelId: string, stars: number, time: number, shunts: number): boolean {
+/**
+ * Record a finished run and unlock the next level.
+ * Returns true if it beat the previous best time.
+ */
+export function recordResult(levelId: string, levelNumber: number, stars: number, time: number, shunts: number): boolean {
   const save = loadSave();
   const prev = save.levels[levelId];
   const newBest = !prev || time < prev.bestTime;
@@ -45,6 +58,13 @@ export function recordResult(levelId: string, stars: number, time: number, shunt
     bestTime: Math.min(prev?.bestTime ?? Infinity, time),
     bestShunts: Math.min(prev?.bestShunts ?? Infinity, shunts),
   };
+  save.unlocked = Math.max(save.unlocked, levelNumber + 1);
   writeSave(save);
   return newBest;
+}
+
+export function saveSettings(settings: Settings): void {
+  const save = loadSave();
+  save.settings = settings;
+  writeSave(save);
 }

@@ -1,7 +1,7 @@
 /** Procedural yard: tarmac, kerbs, dock building, doors, buffers and bay lines. */
 import { theme } from '../config/theme.ts';
 import { DEG } from '../core/math.ts';
-import type { Bay, YardLayout } from '../game/yard.ts';
+import type { Bay, Marking, YardLayout } from '../game/yard.ts';
 
 // Patterns belong to the context that made them (main view, share card…).
 const tarmacPatterns = new WeakMap<CanvasRenderingContext2D, CanvasPattern | null>();
@@ -49,6 +49,42 @@ export function worldText(
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 0, 0);
   ctx.restore();
+}
+
+function drawMarking(ctx: CanvasRenderingContext2D, m: Marking): void {
+  switch (m.kind) {
+    case 'text':
+      worldText(ctx, m.text, m.x, m.y, m.size ?? 1.6, (m.angle ?? 0) * DEG, 'rgba(242,242,242,0.8)');
+      break;
+    case 'hatch': {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(m.x, m.y, m.w, m.h);
+      ctx.clip();
+      ctx.strokeStyle = theme.yardLineYellow;
+      ctx.lineWidth = 0.15;
+      ctx.strokeRect(m.x, m.y, m.w, m.h);
+      ctx.beginPath();
+      for (let d = -m.h; d < m.w; d += 1.2) {
+        ctx.moveTo(m.x + d, m.y + m.h);
+        ctx.lineTo(m.x + d + m.h, m.y);
+      }
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'line':
+      ctx.save();
+      ctx.strokeStyle = m.colour === 'yellow' ? theme.yardLineYellow : theme.yardLineWhite;
+      ctx.lineWidth = 0.12;
+      if (m.dashed) ctx.setLineDash([1.5, 1.5]);
+      ctx.beginPath();
+      ctx.moveTo(m.x1, m.y1);
+      ctx.lineTo(m.x2, m.y2);
+      ctx.stroke();
+      ctx.restore();
+      break;
+  }
 }
 
 function drawBay(ctx: CanvasRenderingContext2D, bay: Bay): void {
@@ -101,21 +137,37 @@ export function drawYard(ctx: CanvasRenderingContext2D, yard: YardLayout): void 
   ctx.lineWidth = 0.3;
   ctx.strokeRect(-0.15, -0.15, yard.width + 0.3, yard.height + 0.3);
 
-  // Buildings (dock warehouse).
+  for (const m of yard.markings) drawMarking(ctx, m);
+
+  // Buildings (warehouse, dock pods). Rotated about their centres.
   for (const b of yard.buildings) {
+    ctx.save();
+    ctx.translate(b.x + b.w / 2, b.y + b.h / 2);
+    ctx.rotate((b.angle ?? 0) * DEG);
+    const x0 = -b.w / 2;
+    const y0 = -b.h / 2;
     ctx.fillStyle = theme.yardBuilding;
-    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.fillRect(x0, y0, b.w, b.h);
+    // Roof sheets run across the short side.
     ctx.strokeStyle = theme.yardBuildingRoof;
     ctx.lineWidth = 0.08;
     ctx.beginPath();
-    for (let x = b.x + 2; x < b.x + b.w; x += 2) {
-      ctx.moveTo(x, b.y);
-      ctx.lineTo(x, b.y + b.h);
+    if (b.w >= b.h) {
+      for (let x = x0 + 2; x < -x0; x += 2) {
+        ctx.moveTo(x, y0);
+        ctx.lineTo(x, -y0);
+      }
+    } else {
+      for (let y = y0 + 2; y < -y0; y += 2) {
+        ctx.moveTo(x0, y);
+        ctx.lineTo(-x0, y);
+      }
     }
     ctx.stroke();
     ctx.strokeStyle = 'rgba(0,0,0,0.4)';
     ctx.lineWidth = 0.25;
-    ctx.strokeRect(b.x, b.y, b.w, b.h);
+    ctx.strokeRect(x0, y0, b.w, b.h);
+    ctx.restore();
   }
 
   // Dock doors: a lighter recess at the building face behind each buffered bay.

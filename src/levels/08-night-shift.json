@@ -1,0 +1,25 @@
+{
+  "id": "08-night-shift",
+  "name": "Night Shift",
+  "brief": "3am, the yard lights are out and it's just you, your headlights and the reversing lights. Bay 6, sight side.",
+  "width": 90,
+  "height": 50,
+  "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
+  "docks": [{ "x": 16, "y": 8, "along": 0, "heading": 90, "count": 12 }],
+  "targetBay": "6",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "5", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "9", "colour": "#8a3b2f" },
+    { "kind": "trailer-in-bay", "bay": "2", "colour": "#2f4f7a" },
+    { "kind": "bollard", "x": 12, "y": 30 },
+    { "kind": "cone", "x": 60, "y": 40 }
+  ],
+  "conditions": { "night": true },
+  "spawn": { "x": 23.32, "y": 37.68, "heading": 182.2, "articulation": 6.4 },
+  "stars": { "three": { "shunts": 0, "time": 60 }, "two": { "shunts": 2, "time": 110 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 8 },
+    { "throttle": 1, "steer": 0.6, "dist": 17 },
+    { "throttle": 1, "steer": 0, "dist": 14 }
+  ]
+}

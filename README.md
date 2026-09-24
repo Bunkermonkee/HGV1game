@@ -3,9 +3,9 @@
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
 TypeScript, built with Vite into one static folder. No backend, no CDNs.
 
-> **Status: stage 2 – collisions, scoring and share card.** One practice yard
-> with a target bay (Bay 7). Levels, touch controls and audio come next. The
-> full deploy/WordPress guide will be added at the end.
+> **Status: stage 3 – levels.** 10 levels with level select, night, rain and
+> Pro-view mirrors. Touch controls and audio come next. The full
+> deploy/WordPress guide will be added at the end.
 
 ## Run it
 
@@ -27,6 +27,7 @@ npm run preview    # serve dist/ locally
 | R | Restart |
 | Esc | Pause |
 | `` ` `` or F3 | Debug overlay |
+| V | Pro view mirrors on/off |
 | + / − or mouse wheel | Zoom |
 
 The brief asked for `D` to toggle debug, but `D` is already "steer right"
@@ -38,6 +39,74 @@ Every vehicle constant is in **`src/config/vehicle.ts`**: dimensions,
 steering lock/rate/self-centring, speeds, acceleration, jackknife angle,
 and the metres→pixels constant. Change a number, save, and the dev server
 reloads.
+
+## Levels (`src/levels/*.json`)
+
+| # | Name | What's new |
+| --- | --- | --- |
+| 1 | First Drop | Straight back, empty dock, tutorial prompts |
+| 2 | Tight Squeeze | Straight back between parked trailers, slightly off line |
+| 3 | Sight Side | First 90° reverse, trailer swinging to the driver's side |
+| 4 | Cone Alley | Sight side with a coned-off yard |
+| 5 | Blind Side | 90° onto the nearside |
+| 6 | Sawtooth | 45° angled bays in a busy yard |
+| 7 | Short Run-Up | Cramped yard – shunts expected |
+| 8 | Night Shift | Dark yard: headlights, reversing lights and dim dock lamps only |
+| 9 | Wet Wednesday | Rain: fog, and 70% grip on forward pull-ups |
+| 10 | The Monday Morning | Tight, blind side, trailers both sides, tough targets |
+
+Levels unlock one at a time; stars and best times are saved per level.
+
+### Adding or editing a level
+
+Levels are JSON files played in filename order. Copy one, change it, and
+rebuild; no code changes are needed. The main fields:
+
+- `width`, `height` – tarmac size in metres (x → east, y → south).
+- `buildings` – `{ x, y, w, h, angle? }` rectangles.
+- `docks` – rows of bays: `{ x, y, along, heading, count, width?, length?,
+  spacing?, firstLabel?, buffers?, pods? }`. `heading` is the direction out
+  of the bay (90 = south); `along` is the direction the row runs. For angled
+  (sawtooth) docks, set `pods: true` so each bay gets its own dock block.
+- `targetBay` – the label of the bay to reverse onto.
+- `obstacles` – `cone`, `bollard`, `trailer` (x, y = rear centre + heading),
+  `trailer-in-bay` (bay label), `wall`/`kerb` (centre, length, width, angle).
+- `markings` – painted `text`, `hatch` boxes and `line`s (decoration).
+- `conditions` – `night`, `rain`, `forwardGrip` (0–1), `visibility` (metres).
+- `stars` – `three` and `two`, each `{ shunts, time }`.
+- `tutorial` – `{ trigger, text }` prompts. The triggers are `start`,
+  `reversing`, `drift`, `nearBay`, `aligned`, `shunt` and `contact`.
+- `driveOut` – a list of `{ throttle: 1 | -1, steer: -1…1, dist: metres }`
+  moves that drive the rig OUT of the bay. This is the level's proof that it
+  can be solved.
+
+Then run:
+
+```bash
+npm run check-levels            # validate every level
+npm run check-levels -- --write # also set each spawn from the drive-out
+```
+
+The checker parks the rig on the target bay and replays the drive-out. It
+fails the level if anything is touched. The vehicle model is
+time-reversible, so a clean drive-out proves the reverse-in exists, and
+`--write` puts the truck where the drive-out ends. It also prints the
+route length and shunts as a guide for star targets. (Needs Node 22.6+.)
+
+## Night, rain and Pro view
+
+- **Night:** a half-resolution light map darkens the yard, with the lights
+  cut out of it. These are the headlights, reversing lights, tail lights,
+  the trailer's amber side markers and a dim lamp over each dock door (the
+  target bay's is brighter).
+- **Rain:** screen-space rain, wet tarmac and fog beyond `visibility` metres.
+  `forwardGrip` scales acceleration and braking when pulling forward.
+- **Pro view (V):** nearside (N/S) and offside (O/S) mirror insets. Each is a
+  rotated, cropped, mirror-image view of the world from the mirror heads on
+  the cab, so the trailer swings out of one mirror and into the other as
+  you articulate. The setting is saved.
+- **Camera:** it frames the rig and the target bay together when they fit,
+  otherwise follows the rig and leans towards the bay.
 
 ## Scoring rules (`src/config/rules.ts`)
 
@@ -108,8 +177,12 @@ src/config/vehicle.ts vehicle tuning constants
 src/config/theme.ts   reads theme.css variables for the canvas
 src/core/             maths helpers, keyboard input
 src/physics/          artic kinematics, oriented boxes, SAT collision
-src/render/           camera, yard/vehicle art, HUD, debug overlay
-src/game/yard.ts      yard/level data format + practice yard
+src/render/           camera, yard/vehicle art, HUD, debug overlay,
+                      night/rain (atmosphere.ts), mirrors (mirrors.ts)
+src/levels/           level JSON files, parser, bundler glob
+scripts/check-levels.ts  level validator / solvability proof
+src/game/yard.ts      runtime level types
+src/game/tutorial.ts  tutorial prompts
 src/game/session.ts   one attempt: collisions, time, shunts, contacts, stars
 src/game/obstacles.ts yard data → collision boxes
 src/game/bay.ts       "parked correctly?" check
@@ -118,4 +191,5 @@ src/config/rules.ts   scoring and contact rules
 src/config/brand.ts   station name, share URL, logo
 src/share/            share card image, share/download/copy
 src/ui/screens.ts     results (delivery note) and fail screens
+src/ui/menus.ts       title, level select, briefing
 ```

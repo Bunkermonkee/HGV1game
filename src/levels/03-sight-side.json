@@ -1,0 +1,21 @@
+{
+  "id": "03-sight-side",
+  "name": "Sight Side",
+  "brief": "Your first 90° reverse. Bay 7 is on your side, so you can watch the trailer swing round through your window.",
+  "width": 90,
+  "height": 50,
+  "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
+  "docks": [{ "x": 20, "y": 8, "along": 0, "heading": 90, "count": 10 }],
+  "targetBay": "7",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "2", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "10", "colour": "#8a3b2f" }
+  ],
+  "spawn": { "x": 29.13, "y": 37.7, "heading": 183.6, "articulation": 5 },
+  "stars": { "three": { "shunts": 0, "time": 55 }, "two": { "shunts": 2, "time": 100 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 8 },
+    { "throttle": 1, "steer": 0.6, "dist": 17 },
+    { "throttle": 1, "steer": 0, "dist": 16 }
+  ]
+}

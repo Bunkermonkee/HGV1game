@@ -2,13 +2,14 @@
   "name": "yard-master",
   "private": true,
   "version": "0.1.0",
-  "description": "Yard Master – HGV reversing mini-game for HGV1 Radio",
+  "description": "Yard Master \u2013 HGV reversing mini-game for HGV1 Radio",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check-levels": "node --experimental-strip-types --no-warnings scripts/check-levels.ts"
   },
   "devDependencies": {
     "typescript": "~5.9.0",

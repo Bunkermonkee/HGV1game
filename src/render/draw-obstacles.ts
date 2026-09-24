@@ -94,7 +94,12 @@ export function drawObstacles(ctx: CanvasRenderingContext2D, obstacles: Obstacle
         }
         break;
       case 'wall':
-        break; // buildings are drawn with the yard
+        if (o.building) break; // buildings are drawn with the yard
+        ctx.fillStyle = '#7d828a';
+        fillBox(ctx, o);
+        ctx.fillStyle = '#9aa0a8';
+        fillBox(ctx, { ...o, box: { ...o.box, halfLength: o.box.halfLength - 0.1, halfWidth: o.box.halfWidth - 0.1 } });
+        break;
       case 'cone':
         drawCone(ctx, o);
         break;

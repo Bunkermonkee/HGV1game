@@ -14,8 +14,12 @@ function panel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   ctx.fill();
 }
 
+function hudScale(viewW: number, viewH: number): number {
+  return Math.min(1.25, Math.max(0.75, Math.min(viewW, viewH) / 480));
+}
+
 export function drawHud(ctx: CanvasRenderingContext2D, artic: Artic, viewW: number, viewH: number): void {
-  const s = Math.min(1.25, Math.max(0.75, Math.min(viewW, viewH) / 480));
+  const s = hudScale(viewW, viewH);
   ctx.save();
   ctx.translate(12, viewH - 12 - 110 * s);
   ctx.scale(s, s);
@@ -269,4 +273,50 @@ export class Toasts {
       ctx.restore();
     });
   }
+}
+
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** Tutorial tip, in a panel just above the gauges (bottom-left). Returns its top edge (CSS px). */
+export function drawTip(ctx: CanvasRenderingContext2D, text: string, viewW: number, viewH: number): number {
+  const s = hudScale(viewW, viewH);
+  const w = 330;
+  ctx.save();
+  ctx.font = `600 14px ${theme.uiFont}`;
+  const lines = wrapLines(ctx, text, w - 34);
+  const h = lines.length * 19 + 20;
+  const top = viewH - 12 - 110 * s - 10 - h * s;
+  ctx.translate(12, top);
+  ctx.scale(s, s);
+  ctx.fillStyle = 'rgba(12,14,18,0.88)';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, w, h, 12);
+  ctx.fill();
+  ctx.fillStyle = theme.brandSecondary;
+  ctx.fillRect(0, 10, 5, h - 20);
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline = 'top';
+  lines.forEach((l, i) => ctx.fillText(l, 18, 11 + i * 19));
+  ctx.restore();
+  return top;
+}
+
+/** Height (CSS px) of the bottom-left gauge panel, for laying out around it. */
+export function hudHeight(viewW: number, viewH: number): number {
+  return 12 + 110 * hudScale(viewW, viewH);
 }

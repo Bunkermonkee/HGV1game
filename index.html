@@ -12,11 +12,54 @@
     <div id="app">
       <canvas id="game" tabindex="0" aria-label="Yard Master game"></canvas>
 
+      <div id="title" class="overlay menu hidden" role="dialog" aria-labelledby="game-title">
+        <div class="title-card">
+          <div class="hazard" aria-hidden="true"></div>
+          <div class="logo-slot on-dark" id="title-logo">LOGO</div>
+          <h1 id="game-title" class="game-title">Yard Master</h1>
+          <p class="tagline">Ten yards. One bay each. Back it on straight.</p>
+          <button id="btn-play" class="btn primary big" type="button">Play</button>
+          <button id="btn-proview" class="btn toggle" type="button" aria-pressed="false">Pro view mirrors: Off</button>
+          <p class="controls-note">← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · Esc pause</p>
+        </div>
+      </div>
+
+      <div id="select" class="overlay menu hidden" role="dialog" aria-labelledby="select-title">
+        <div class="select-panel">
+          <header class="select-head">
+            <button id="btn-select-back" class="btn small" type="button">Back</button>
+            <h2 id="select-title">Choose a yard</h2>
+            <span id="select-stars" class="select-stars"></span>
+          </header>
+          <ol id="level-grid" class="level-grid"></ol>
+        </div>
+      </div>
+
+      <div id="briefing" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="brief-name">
+        <div class="card briefing-card">
+          <p class="eyebrow" id="brief-number"></p>
+          <h1 id="brief-name"></h1>
+          <p id="brief-text" class="brief-text"></p>
+          <ul id="brief-tags" class="tags"></ul>
+          <table class="targets">
+            <tbody>
+              <tr><th scope="row">★★★</th><td id="brief-three"></td></tr>
+              <tr><th scope="row">★★</th><td id="brief-two"></td></tr>
+              <tr><th scope="row">★</th><td>Get it on the bay</td></tr>
+            </tbody>
+          </table>
+          <button id="btn-start" class="btn primary" type="button">Start</button>
+          <button id="btn-brief-levels" class="btn" type="button">Choose another yard</button>
+        </div>
+      </div>
+
       <div id="pause" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
         <div class="card">
           <h1 id="pause-title">Paused</h1>
           <button id="resume" class="btn primary" type="button">Resume</button>
           <button id="restart" class="btn" type="button">Restart</button>
+          <button id="pause-proview" class="btn toggle" type="button" aria-pressed="false">Pro view mirrors: Off</button>
+          <button id="pause-levels" class="btn" type="button">Level select</button>
         </div>
       </div>
 
@@ -54,7 +97,9 @@
               <button id="btn-share" class="btn primary" type="button">Share</button>
               <button id="btn-download" class="btn" type="button">Download image</button>
               <button id="btn-copy" class="btn" type="button">Copy text</button>
+              <button id="btn-next" class="btn primary" type="button">Next yard</button>
               <button id="btn-again" class="btn" type="button">Drive again</button>
+              <button id="btn-levels" class="btn" type="button">Level select</button>
             </div>
             <p class="note-msg" id="share-msg" aria-live="polite"></p>
           </section>
@@ -66,6 +111,7 @@
           <h1 id="fail-title">Jackknifed</h1>
           <p id="fail-reason"></p>
           <button id="btn-retry" class="btn primary" type="button">Try again</button>
+          <button id="btn-fail-levels" class="btn" type="button">Level select</button>
         </div>
       </div>
 

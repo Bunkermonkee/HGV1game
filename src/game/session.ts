@@ -50,6 +50,8 @@ export class Session {
   bayCheck!: BayCheck;
   /** Seconds since the state last changed (drives the results delay). */
   stateTime = 0;
+  /** Metres driven in reverse this attempt (tutorial prompts use it). */
+  reverseDistance = 0;
 
   private started = false;
   private hasReversed = false;
@@ -68,6 +70,8 @@ export class Session {
   reset(): void {
     const s = this.yard.spawn;
     this.artic.resetFromTrailerRear(s.x, s.y, s.heading * DEG, s.articulation ?? 0);
+    this.artic.conditions = { forwardGrip: this.yard.conditions.forwardGrip ?? 1 };
+    this.reverseDistance = 0;
     this.obstacles = buildObstacles(this.yard);
     this.state = 'driving';
     this.stateTime = 0;
@@ -133,6 +137,7 @@ export class Session {
     }
 
     if (this.started) this.time += dt;
+    if (this.artic.speed < 0) this.reverseDistance -= this.artic.speed * dt;
 
     this.bayCheck = checkBay(this.artic, this.bay);
     this.judgeParking();

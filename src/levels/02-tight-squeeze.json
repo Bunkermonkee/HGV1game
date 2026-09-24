@@ -1,0 +1,24 @@
+{
+  "id": "02-tight-squeeze",
+  "name": "Tight Squeeze",
+  "brief": "Straight back onto Bay 5 with a trailer parked either side. You're not quite lined up, so fix it early.",
+  "width": 64,
+  "height": 58,
+  "buildings": [{ "x": 0, "y": 0, "w": 64, "h": 8 }],
+  "docks": [{ "x": 16.8, "y": 8, "along": 0, "heading": 90, "count": 8 }],
+  "targetBay": "5",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "4", "colour": "#8a3b2f" },
+    { "kind": "trailer-in-bay", "bay": "6", "colour": "#3c6b44" },
+    { "kind": "trailer-in-bay", "bay": "1", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "8", "colour": "#2f4f7a" }
+  ],
+  "spawn": { "x": 33.66, "y": 34.97, "heading": 92.3, "articulation": -0.8 },
+  "stars": { "three": { "shunts": 0, "time": 45 }, "two": { "shunts": 2, "time": 90 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 14 },
+    { "throttle": 1, "steer": 0.2, "dist": 4 },
+    { "throttle": 1, "steer": -0.2, "dist": 4 },
+    { "throttle": 1, "steer": 0, "dist": 3 }
+  ]
+}

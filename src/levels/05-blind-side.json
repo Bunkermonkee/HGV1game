@@ -1,0 +1,22 @@
+{
+  "id": "05-blind-side",
+  "name": "Blind Side",
+  "brief": "Bay 4 is on the nearside. Once the trailer swings round you lose sight of it – trust your mirrors and the gauge.",
+  "width": 90,
+  "height": 50,
+  "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
+  "docks": [{ "x": 12, "y": 8, "along": 0, "heading": 90, "count": 10 }],
+  "targetBay": "4",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "2", "colour": "#8a3b2f" },
+    { "kind": "trailer-in-bay", "bay": "6", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "9", "colour": "#3c6b44" }
+  ],
+  "spawn": { "x": 40.87, "y": 37.7, "heading": 356.4, "articulation": -5 },
+  "stars": { "three": { "shunts": 0, "time": 60 }, "two": { "shunts": 2, "time": 110 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 8 },
+    { "throttle": 1, "steer": -0.6, "dist": 17 },
+    { "throttle": 1, "steer": 0, "dist": 16 }
+  ]
+}

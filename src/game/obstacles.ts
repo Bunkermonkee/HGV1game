@@ -15,6 +15,8 @@ export interface Obstacle {
   hit: boolean;
   /** Parked trailers: paint colour. */
   colour?: string;
+  /** Part of a building (drawn with the yard, not as an obstacle). */
+  building?: boolean;
 }
 
 /** What the driver hit, for the fail message. */
@@ -46,7 +48,11 @@ function make(kind: ObstacleKind, b: OBB, colour?: string): Obstacle {
 export function buildObstacles(yard: YardLayout): Obstacle[] {
   const out: Obstacle[] = [];
 
-  for (const r of yard.buildings) out.push(make('wall', box(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, r.h / 2)));
+  for (const r of yard.buildings) {
+    const wall = make('wall', box(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, r.h / 2, (r.angle ?? 0) * DEG));
+    wall.building = true;
+    out.push(wall);
+  }
 
   // Yard boundary kerbs, just outside the tarmac.
   const t = KERB_THICKNESS / 2;
