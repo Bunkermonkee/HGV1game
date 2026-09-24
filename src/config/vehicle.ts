@@ -83,8 +83,10 @@ export const SPEED = {
 };
 
 export const ARTICULATION = {
-  /** Hitch angle beyond which the rig is jackknifed (instant fail). */
+  /** Hitch angle beyond which the rig is jackknifed – instant fail, but only when reversing. */
   jackknifeAngle: 80,
+  /** Physical limit: the cab touches the trailer's front corner. */
+  mechanicalStop: 90,
   /** HUD gauge turns amber / red at these angles. */
   warnAngle: 45,
   dangerAngle: 65,

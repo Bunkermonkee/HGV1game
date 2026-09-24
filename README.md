@@ -127,7 +127,8 @@ route length and shunts as a guide for star targets. (Needs Node 22.6+.)
   - Backing the trailer onto the buffers at 1.8 mph or less is correct
     docking, so there's no penalty.
   - Cones are knocked over (+5 s) but don't stop you.
-- **Jackknife:** articulation past 80° = fail.
+- **Jackknife:** reversing with the articulation past 80° = fail. Pulling
+  forward past 80° is allowed (with a warning); the cab stops the trailer at 90°.
 - **Stars** use per-level targets in the yard data (`stars.three` /
   `stars.two`, each `{ shunts, time }`, judged on time including penalties).
   Finishing at all is 1★; 3★ also needs zero contacts.
@@ -164,7 +165,8 @@ stars, time, shunts, contacts, and "Can you beat me?" with the URL.
   `ψ̇ = [v·sin(θ−ψ) + a·θ̇·cos(θ−ψ)] / L₂`.
   Reversing makes straight an unstable balance, so the trailer swings
   opposite to the steering and has to be caught, as on a real artic.
-- **Jackknife:** |θ − ψ| > 80° ends the attempt.
+- **Jackknife:** |θ − ψ| > 80° while reversing ends the attempt. Going
+  forwards, a mechanical stop holds the articulation at 90°.
 - Frames are split into equal ≤ 1/120 s sub-steps, so the handling is the
   same at 60, 90, 120 or 144 Hz.
 

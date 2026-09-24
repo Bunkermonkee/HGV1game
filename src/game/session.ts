@@ -56,6 +56,7 @@ export class Session {
   private started = false;
   private hasReversed = false;
   private handbrakeJudged = false;
+  private overWarned = false;
   /** Hard obstacles currently in contact, so pressing against one counts once. */
   private touching = new Set<Obstacle>();
   private events: SessionEvent[] = [];
@@ -81,6 +82,7 @@ export class Session {
     this.started = false;
     this.hasReversed = false;
     this.handbrakeJudged = false;
+    this.overWarned = false;
     this.touching.clear();
     this.events.length = 0;
     this.bayCheck = checkBay(this.artic, this.bay);
@@ -130,10 +132,18 @@ export class Session {
       } else if (e === 'jackknife') {
         this.fail(
           'JACKKNIFED',
-          `The trailer folded past 80°. Keep the angle out of the red and pull forward to straighten up before it gets away from you.`,
+          `You reversed with the trailer folded past 80°. Keep the angle out of the red, and pull forward to straighten up before it gets away from you.`,
         );
         return;
       }
+    }
+
+    // Folded past the limit while pulling forward: warn before they reverse.
+    if (this.artic.overArticulated && !this.overWarned) {
+      this.overWarned = true;
+      this.events.push({ type: 'message', text: 'Over 80° – straighten up before you reverse' });
+    } else if (!this.artic.overArticulated) {
+      this.overWarned = false;
     }
 
     if (this.started) this.time += dt;

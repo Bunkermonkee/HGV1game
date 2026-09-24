@@ -162,10 +162,21 @@ export class Artic {
     this.updateSpeed(dt, input);
     this.integrate(dt);
 
-    if (Math.abs(this.articulation) > ARTICULATION.jackknifeAngle * DEG) {
+    const phi = this.articulation;
+    // A jackknife only counts when reversing: pulling forward on full lock can
+    // legitimately fold the rig past 80°, but reversing like that is a fail.
+    if (this.speed < 0 && Math.abs(phi) > ARTICULATION.jackknifeAngle * DEG) {
       this.jackknifed = true;
       this.events.push('jackknife');
     }
+    // Mechanical stop: the cab meets the trailer's front corner and drags it round.
+    const stop = ARTICULATION.mechanicalStop * DEG;
+    if (Math.abs(phi) > stop) this.trailerHeading = wrapAngle(this.heading - Math.sign(phi) * stop);
+  }
+
+  /** Articulated past the jackknife angle (only allowed while going forwards). */
+  get overArticulated(): boolean {
+    return Math.abs(this.articulation) > ARTICULATION.jackknifeAngle * DEG;
   }
 
   private updateSteering(dt: number, input: DriveInput): void {
