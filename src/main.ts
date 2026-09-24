@@ -180,6 +180,8 @@ function frame(now: number): void {
 
 restart();
 canvas.focus();
+// In an iframe the page often starts without keyboard focus: say so up front.
+if (!document.hasFocus()) focusHint.classList.remove('hidden');
 requestAnimationFrame((t) => {
   last = t;
   frame(t);
