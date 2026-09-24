@@ -202,11 +202,30 @@ stars, time, shunts, contacts, and "Can you beat me?" with the URL.
 
 ## Brand
 
-- Colours: `styles/theme.css` (placeholders).
-- Station name, share URL and logo: `src/config/brand.ts`. For the logo, put
-  the file in `public/` (e.g. `public/logo.png`) and set
-  `logoSrc: './logo.png'`. It then appears on the delivery note and the share
-  card; until then a "LOGO" placeholder shows.
+HGV1 Radio branding is applied:
+
+- **Colours** (`styles/theme.css`):
+  - orange `#f85f00` for buttons, stars, hazard stripes and highlights;
+  - black `#0e0f11` for backgrounds;
+  - white for text and the focus ring.
+  - Primary buttons use black text on orange, for readability in a bright
+    cab. The delivery note uses a darker orange (`#c24a00`) so text stays
+    readable on the cream paper.
+- **Logos** (`public/brand/`):
+  - `logo-on-dark.webp` is the white version, used on the title screen and
+    the share card;
+  - `logo-on-light.webp` is the black version, used on the delivery note and
+    painted on the player's trailer roof;
+  - `favicon.png` and `apple-touch-icon.png` are the browser-tab icons, made
+    from the logo's G.
+- **Text** (`src/config/brand.ts`): station name "HGV1 Radio", and the share
+  address. The address is **provisional**
+  (`projectchimera.co.uk/yardmaster`) – confirm it before launch.
+- **Player's truck:** orange cab, black curtainsider with a white roof and the
+  logo. Set `trailerRoofLogo: false` in `brand.ts` to remove the roof logo.
+
+To swap a logo, replace the file in `public/brand/` (keep the name) and
+rebuild.
 
 ## How the physics works (`src/physics/artic.ts`)
 

@@ -47,7 +47,7 @@ function hazardBand(ctx: CanvasRenderingContext2D, y: number, h: number): void {
 }
 
 function logoSlot(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-  const img = brandLogo();
+  const img = brandLogo('onDark');
   if (img) {
     const k = Math.min(w / img.naturalWidth, h / img.naturalHeight);
     const iw = img.naturalWidth * k;

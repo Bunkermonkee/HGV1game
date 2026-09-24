@@ -1,15 +1,18 @@
 /*
  * Yard Master theme – the ONE place to set brand colours.
- * Placeholder values: swap in HGV1 Radio's brand colours here.
+ * HGV1 Radio: orange #f85f00, black and white.
  * The canvas renderer reads these variables at start-up, so the game art
  * and the HTML screens always match.
  */
 :root {
   /* Brand */
-  --brand-primary: #e30613;      /* placeholder: HGV1 main colour */
-  --brand-secondary: #ffd200;    /* placeholder: accent / highlights */
-  --brand-dark: #111418;
+  --brand-primary: #f85f00;      /* HGV1 orange: buttons, borders, the URL */
+  --brand-secondary: #f85f00;    /* highlights: stars, hazard stripes, labels */
+  --brand-dark: #0e0f11;         /* HGV1 black */
   --brand-light: #ffffff;
+  /* Text on orange: black reads far better than white in a bright cab. */
+  --on-primary: #0e0f11;
+  --focus-ring: #ffffff;
 
   /* UI */
   --ui-bg: rgba(12, 14, 18, 0.88);
@@ -23,10 +26,10 @@
   --ui-font-display: "Arial Black", "Helvetica Neue", Arial, sans-serif;
 
   /* Vehicle livery (plain, unbranded) */
-  --cab-colour: #e30613;
-  --cab-roof: #c10510;
-  --trailer-curtain: #2f5d8a;
-  --trailer-roof: #dfe4ea;
+  --cab-colour: #f85f00;
+  --cab-roof: #d14f00;
+  --trailer-curtain: #16181b;
+  --trailer-roof: #eef0f2;
 
   /* Yard */
   --yard-tarmac: #4a4d52;
@@ -44,5 +47,5 @@
   --note-paper: #fbf8ef;
   --note-ink: #1d2230;
   --note-rule: #c9c2ad;
-  --note-stamp: #c8102e;
+  --note-stamp: #c24a00;  /* darker orange: readable on the cream paper */
 }

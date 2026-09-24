@@ -4,6 +4,7 @@
  * (+x forwards, +y to the vehicle's right).
  */
 import { TRACTOR, TRAILER } from '../config/vehicle.ts';
+import { BRAND, brandLogo } from '../config/brand.ts';
 import { theme } from '../config/theme.ts';
 import { obbCorners, type OBB } from '../physics/geometry.ts';
 import type { Artic } from '../physics/artic.ts';
@@ -176,6 +177,8 @@ export interface TrailerLook {
   reversing?: boolean;
   braking?: boolean;
   curtain?: string;
+  /** Logo painted on the roof (the player's trailer only). */
+  roofLogo?: HTMLImageElement | null;
 }
 
 export function drawTrailer(ctx: CanvasRenderingContext2D, artic: Artic): void {
@@ -183,6 +186,7 @@ export function drawTrailer(ctx: CanvasRenderingContext2D, artic: Artic): void {
   drawTrailerAt(ctx, h.x, h.y, artic.trailerHeading, {
     reversing: artic.gear === 'R' && !artic.jackknifed,
     braking: artic.braking || artic.handbrake,
+    roofLogo: BRAND.trailerRoofLogo ? brandLogo('onLight') : null,
   });
 }
 
@@ -220,6 +224,13 @@ export function drawTrailerAt(
     ctx.lineTo(x, THW - 0.16);
   }
   ctx.stroke();
+
+  if (look.roofLogo) {
+    // Centred on the roof, reading along the trailer.
+    const h = TRAILER.width - 0.7;
+    const w = h * (look.roofLogo.naturalWidth / look.roofLogo.naturalHeight);
+    ctx.drawImage(look.roofLogo, (T_REAR + T_FRONT) / 2 - w / 2, -h / 2, w, h);
+  }
 
   // Front bulkhead and rear door frame.
   ctx.fillStyle = '#5b6068';

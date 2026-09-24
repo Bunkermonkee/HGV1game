@@ -2,6 +2,7 @@
  * Yard Master – entry point: screens, game loop, camera and rendering.
  */
 import { Sound } from './audio/sound.ts';
+import { preloadBrand } from './config/brand.ts';
 import { RULES } from './config/rules.ts';
 import { SIMULATION, SPEED, STEERING } from './config/vehicle.ts';
 import { loadTheme, theme } from './config/theme.ts';
@@ -36,6 +37,7 @@ import type { DriveInput } from './physics/artic.ts';
 import { hideScreens, initScreens, isScreenOpen, showFail, showResults } from './ui/screens.ts';
 
 loadTheme();
+preloadBrand();
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d', { alpha: false })!;

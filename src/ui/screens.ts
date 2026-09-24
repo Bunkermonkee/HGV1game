@@ -1,5 +1,6 @@
 /** DOM screens: results (delivery note) and fail. */
-import { BRAND, brandLogo } from '../config/brand.ts';
+import { BRAND } from '../config/brand.ts';
+import { showLogo } from './menus.ts';
 import { RULES } from '../config/rules.ts';
 import type { RunResult, Session } from '../game/session.ts';
 import type { LevelRecord } from '../game/storage.ts';
@@ -103,10 +104,7 @@ export async function showResults(
     stars.appendChild(s);
   }
 
-  const logo = brandLogo();
-  const slot = $('note-logo');
-  slot.textContent = logo ? '' : 'LOGO';
-  if (logo) slot.appendChild(logo.cloneNode());
+  showLogo($('note-logo'), 'onLight');
 
   say('');
   current = { text: shareText(r), blob: null, file: null };

@@ -60,8 +60,9 @@ html, body {
 .btn.primary {
   background: var(--brand-primary);
   border-color: var(--brand-primary);
+  color: var(--on-primary);
 }
-.btn:focus-visible { outline: 3px solid var(--brand-secondary); outline-offset: 2px; }
+.btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 .hint {
   position: absolute;
@@ -140,7 +141,7 @@ html, body {
 .note-table td { font-weight: 700; }
 .note-table td.new-best { color: var(--note-stamp); }
 .note-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
-.note-stars { font-size: clamp(30px, 6vw, 40px); letter-spacing: 4px; color: #e0a800; line-height: 1; }
+.note-stars { font-size: clamp(30px, 6vw, 40px); letter-spacing: 4px; color: var(--brand-primary); line-height: 1; }
 .note-stars .off { color: #d8d2c0; }
 .stamp {
   font: 900 20px var(--ui-font-display);
@@ -206,6 +207,10 @@ html, body {
   background: repeating-linear-gradient(-45deg, var(--brand-secondary) 0 16px, var(--brand-dark) 16px 32px);
 }
 .logo-slot.on-dark { border-color: rgba(255, 255, 255, 0.35); color: rgba(255, 255, 255, 0.6); width: 150px; height: 64px; }
+/* With a real logo: no placeholder box, and let the logo breathe. */
+.logo-slot.has-logo { border: 0; border-radius: 0; width: auto; height: auto; overflow: visible; }
+.logo-slot.has-logo img { display: block; width: auto; height: 48px; max-width: 100%; }
+.logo-slot.on-dark.has-logo img { height: clamp(56px, 16vh, 96px); }
 .game-title {
   margin: 0;
   font: 900 clamp(38px, 9vw, 60px) / 1 var(--ui-font-display);
@@ -249,7 +254,7 @@ html, body {
   cursor: pointer;
 }
 .level-btn:hover:not(:disabled) { border-color: var(--brand-secondary); }
-.level-btn:focus-visible { outline: 3px solid var(--brand-secondary); outline-offset: 2px; }
+.level-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .level-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .level-btn .num { font: 900 22px var(--ui-font-display); color: var(--brand-secondary); display: flex; justify-content: space-between; align-items: center; }
 .level-btn .name { font-weight: 800; font-size: 16px; line-height: 1.2; }

@@ -1,5 +1,5 @@
 /** Title, level select and briefing screens. */
-import { brandLogo } from '../config/brand.ts';
+import { BRAND, brandLogo, type LogoVariant } from '../config/brand.ts';
 import type { SaveData } from '../game/storage.ts';
 import type { YardLayout } from '../game/yard.ts';
 
@@ -74,6 +74,21 @@ function tagsFor(level: YardLayout): string[] {
   return t;
 }
 
+/** Fill a logo slot with the real logo, or the "LOGO" placeholder. */
+export function showLogo(slot: HTMLElement, variant: LogoVariant): void {
+  const src = BRAND.logos[variant];
+  slot.replaceChildren();
+  slot.classList.toggle('has-logo', !!src);
+  if (!src) {
+    slot.textContent = 'LOGO';
+    return;
+  }
+  const img = document.createElement('img');
+  img.src = brandLogo(variant)?.src ?? src;
+  img.alt = BRAND.stationName;
+  slot.appendChild(img);
+}
+
 export function hideMenus(): void {
   titleEl.classList.add('hidden');
   selectEl.classList.add('hidden');
@@ -82,10 +97,7 @@ export function hideMenus(): void {
 
 export function showTitle(): void {
   hideMenus();
-  const logo = brandLogo();
-  const slot = $('title-logo');
-  slot.textContent = logo ? '' : 'LOGO';
-  if (logo) slot.appendChild(logo.cloneNode());
+  showLogo($('title-logo'), 'onDark');
   titleEl.classList.remove('hidden');
   $('btn-play').focus();
 }
