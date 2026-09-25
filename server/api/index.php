@@ -16,8 +16,8 @@ $action = $_GET['action'] ?? '';
 try {
     switch ($action) {
         case 'ping':
-            ym_db();
-            ym_json(['ok' => true, 'week' => ym_week(), 'today' => ym_today()]);
+            $version = (string) ym_db()->query('SELECT VERSION()')->fetchColumn();
+            ym_json(['ok' => true, 'week' => ym_week(), 'today' => ym_today(), 'db' => $version, 'php' => PHP_VERSION]);
         case 'board':
             ym_board_action();
         case 'replay':

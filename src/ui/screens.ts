@@ -95,10 +95,13 @@ function ordinal(n: number): string {
 }
 
 /** Offer (or automatically make) a leaderboard post for this run. */
-function setupLeaderboard(r: RunResult): void {
-  const canPost = leaderboard.available && !!r.replay;
-  lbPanel.classList.toggle('hidden', !canPost);
-  if (!canPost) return;
+async function setupLeaderboard(r: RunResult): Promise<void> {
+  lbPanel.classList.add('hidden');
+  if (!r.replay) return;
+  // The check at page load may have failed (bad signal, server hiccup): try again.
+  if (!leaderboard.available && !(await leaderboard.check())) return;
+  if (shown?.result !== r) return;
+  lbPanel.classList.remove('hidden');
   const player = getPlayer();
   lbStatus.textContent = '';
   lbLinks.classList.add('hidden');
@@ -230,7 +233,7 @@ export async function showResults(
   resultsEl.scrollTop = 0;
 
   await renderCard(r, session);
-  setupLeaderboard(r);
+  void setupLeaderboard(r);
   previewImg.alt = `Share card: ${r.levelName}, Bay ${r.bay}, ${shortTime(r.total)}, ${shuntWord}, ${starString(r.stars)}`;
   // Web Share with files on phones; download + copy everywhere else.
   shareBtn.classList.toggle('hidden', !(current.file && canShareImage(current.file)));

@@ -91,7 +91,8 @@ async function call<T>(query: string, body?: unknown): Promise<T> {
   try {
     data = await res.json();
   } catch {
-    throw new ApiError('network');
+    // Not JSON: usually a server error page (e.g. a PHP fatal error).
+    throw new ApiError(res.ok ? 'bad_response' : `http_${res.status}`);
   }
   if (!data.ok) throw new ApiError(data.error ?? 'server_error');
   return data;
@@ -142,7 +143,10 @@ export function errorText(e: unknown): string {
       return "That run couldn't be verified, so it wasn't posted.";
     case 'bad_level':
       return 'This yard has closed – scores for it are no longer taken.';
-    default:
+    case 'network':
       return "Couldn't reach the leaderboard. Check your connection and try again.";
+    default:
+      // Server-side problem: show the code so it can be looked up (see the README).
+      return `The leaderboard had a problem (${code}). Please try again later.`;
   }
 }

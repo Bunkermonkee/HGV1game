@@ -194,66 +194,93 @@ function ym_stars(array $level, int $totalMs, int $shunts, int $contacts): int
 const YM_ORDER = 'stars DESC, total_ms ASC, shunts ASC, created_at ASC, id ASC';
 
 /**
+ * Sortable key for "better run": fewer is better. More stars first, then
+ * less total time, then fewer shunts. Used to pick each player's best row in
+ * plain SQL (no window functions, so it works on MySQL 5.7 as well as 8).
+ */
+const YM_KEY = '((3 - %1$sstars) * 1000000000000 + %1$stotal_ms * 1000 + LEAST(%1$sshunts, 999))';
+
+function ym_key(string $alias = ''): string
+{
+    return sprintf(YM_KEY, $alias === '' ? '' : $alias . '.');
+}
+
+/** Order two rows best-first (matches YM_ORDER). */
+function ym_cmp(array $a, array $b): int
+{
+    return [(int) $b['stars'], (int) $a['total_ms'], (int) $a['shunts'], $a['created_at'], (int) $a['id']]
+       <=> [(int) $a['stars'], (int) $b['total_ms'], (int) $b['shunts'], $b['created_at'], (int) $b['id']];
+}
+
+/**
+ * Each player's best row per level. $levels: level ids; $week: one week or
+ * null for all time. Returns rows keyed "player|level".
+ */
+function ym_best_rows(array $levels, ?string $week): array
+{
+    $in = implode(',', array_fill(0, count($levels), '?'));
+    $weekSql = $week !== null ? ' AND week = ?' : '';
+    $params = $levels;
+    if ($week !== null) {
+        $params[] = $week;
+    }
+    $sql = 'SELECT s.id, s.player_id, s.level_id, s.stars, s.total_ms, s.shunts, s.contacts, s.created_at, p.name
+            FROM ym_scores s
+            JOIN (SELECT player_id, level_id, MIN(' . ym_key() . ") AS k
+                  FROM ym_scores WHERE level_id IN ($in) AND hidden = 0$weekSql
+                  GROUP BY player_id, level_id) b
+              ON b.player_id = s.player_id AND b.level_id = s.level_id AND b.k = " . ym_key('s') . "
+            JOIN ym_players p ON p.player_id = s.player_id
+            WHERE s.level_id IN ($in) AND s.hidden = 0" . ($week !== null ? ' AND s.week = ?' : '') . ' AND p.banned = 0';
+    $q = ym_db()->prepare($sql);
+    $q->execute(array_merge($params, $params));
+    $best = [];
+    foreach ($q->fetchAll() as $r) {
+        $k = $r['player_id'] . '|' . $r['level_id'];
+        // Two equally good runs (e.g. in different weeks): keep the earlier one.
+        if (!isset($best[$k]) || ym_cmp($r, $best[$k]) < 0) {
+            $best[$k] = $r;
+        }
+    }
+    return $best;
+}
+
+/**
  * Ranked board rows. $level is a level id or 'overall'; $week limits to one
  * week (null = all time). Returns the top rows plus the player's own row.
  */
 function ym_board(string $level, ?string $week, ?string $playerId): array
 {
-    $db = ym_db();
-    $params = [];
-    $where = 's.hidden = 0 AND p.banned = 0';
-    if ($week !== null) {
-        $where .= ' AND s.week = ?';
-        $params[] = $week;
-    }
-
     if ($level === 'overall') {
         $ids = array_keys(ym_levels());
         if (!$ids) {
-            return ['entries' => [], 'total' => 0];
+            return ['entries' => [], 'you' => null, 'total' => 0];
         }
-        $where .= ' AND s.level_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
-        array_push($params, ...$ids);
-        $sql = "WITH best AS (
-                    SELECT s.*, p.name,
-                           ROW_NUMBER() OVER (PARTITION BY s.player_id, s.level_id ORDER BY s.stars DESC, s.total_ms, s.shunts, s.created_at) AS rn
-                    FROM ym_scores s JOIN ym_players p ON p.player_id = s.player_id
-                    WHERE $where
-                ), agg AS (
-                    SELECT player_id, MAX(name) AS name, SUM(stars) AS stars, SUM(total_ms) AS total_ms,
-                           SUM(shunts) AS shunts, SUM(contacts) AS contacts, MAX(created_at) AS created_at,
-                           0 AS id, COUNT(*) AS n
-                    FROM best WHERE rn = 1 GROUP BY player_id HAVING n = " . count($ids) . "
-                ), ranked AS (
-                    SELECT *, ROW_NUMBER() OVER (ORDER BY " . YM_ORDER . ") AS pos, COUNT(*) OVER () AS total FROM agg
-                )
-                SELECT * FROM ranked WHERE pos <= " . YM_BOARD_SIZE . " OR player_id = ? ORDER BY pos";
+        // Sum each player's best on every campaign level; only players who have done them all.
+        $players = [];
+        foreach (ym_best_rows($ids, $week) as $r) {
+            $p = &$players[$r['player_id']];
+            $p ??= ['player_id' => $r['player_id'], 'name' => $r['name'], 'stars' => 0, 'total_ms' => 0, 'shunts' => 0,
+                    'contacts' => 0, 'created_at' => '', 'id' => 0, 'n' => 0];
+            $p['stars'] += (int) $r['stars'];
+            $p['total_ms'] += (int) $r['total_ms'];
+            $p['shunts'] += (int) $r['shunts'];
+            $p['contacts'] += (int) $r['contacts'];
+            $p['created_at'] = max($p['created_at'], $r['created_at']);
+            $p['n']++;
+            unset($p);
+        }
+        $rows = array_values(array_filter($players, fn ($p) => $p['n'] === count($ids)));
     } else {
-        $where .= ' AND s.level_id = ?';
-        $params[] = $level;
-        $sql = "WITH best AS (
-                    SELECT s.id, s.player_id, s.stars, s.total_ms, s.time_ms, s.shunts, s.contacts, s.created_at, p.name,
-                           ROW_NUMBER() OVER (PARTITION BY s.player_id ORDER BY s.stars DESC, s.total_ms, s.shunts, s.created_at) AS rn
-                    FROM ym_scores s JOIN ym_players p ON p.player_id = s.player_id
-                    WHERE $where
-                ), ranked AS (
-                    SELECT *, ROW_NUMBER() OVER (ORDER BY " . YM_ORDER . ") AS pos, COUNT(*) OVER () AS total
-                    FROM best WHERE rn = 1
-                )
-                SELECT * FROM ranked WHERE pos <= " . YM_BOARD_SIZE . " OR player_id = ? ORDER BY pos";
+        $rows = array_values(ym_best_rows([$level], $week));
     }
-    $params[] = $playerId ?? '';
-    $q = $db->prepare($sql);
-    $q->execute($params);
-    $rows = $q->fetchAll();
+    usort($rows, 'ym_cmp');
 
     $entries = [];
     $you = null;
-    $total = 0;
-    foreach ($rows as $r) {
-        $total = (int) $r['total'];
+    foreach ($rows as $i => $r) {
         $e = [
-            'pos' => (int) $r['pos'],
+            'pos' => $i + 1,
             'name' => $r['name'],
             'stars' => (int) $r['stars'],
             'totalMs' => (int) $r['total_ms'],
@@ -265,11 +292,11 @@ function ym_board(string $level, ?string $week, ?string $playerId): array
         if ($e['you']) {
             $you = $e;
         }
-        if ($e['pos'] <= YM_BOARD_SIZE) {
+        if ($i < YM_BOARD_SIZE) {
             $entries[] = $e;
         }
     }
-    return ['entries' => $entries, 'you' => $you, 'total' => $total];
+    return ['entries' => $entries, 'you' => $you, 'total' => count($rows)];
 }
 
 function ym_h(string $s): string
