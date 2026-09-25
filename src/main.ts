@@ -23,6 +23,7 @@ import { Atmosphere, needsLightmap } from './render/atmosphere.ts';
 import { Camera } from './render/camera.ts';
 import { DebugOverlay } from './render/debug.ts';
 import { drawObstacles } from './render/draw-obstacles.ts';
+import { drawBanksman, drawBanksmanCall, drawBanksmanLabel, drawTraffic, peopleLights } from './render/draw-people.ts';
 import { drawArtic } from './render/draw-vehicle.ts';
 import { drawYard } from './render/draw-yard.ts';
 import { banner, drawBayGuide, drawHud, drawRunStats, drawTip, hudHeight, Toasts } from './render/hud.ts';
@@ -318,6 +319,10 @@ function handleEvent(e: SessionEvent): void {
       break;
     case 'message':
       toasts.show(e.text, theme.uiWarn, 3);
+      break;
+    case 'banksman':
+      if (e.signal === 'stop') sound.whistle(true);
+      else if (e.signal === 'forward') sound.whistle(false);
       break;
     case 'fail':
       sound.crash();
@@ -677,6 +682,10 @@ function drawWorld(c: CanvasRenderingContext2D): void {
   drawYard(c, session.yard);
   Atmosphere.wetTarmac(c, session.yard);
   drawObstacles(c, session.obstacles);
+  // Animation clock from the physics, so it freezes on pause and matches replays.
+  const t = session.stepCount * STEP;
+  drawTraffic(c, session.traffic, t);
+  if (session.banksman) drawBanksman(c, session.banksman, session.artic, t);
   drawArtic(c, session.artic);
 }
 
@@ -700,8 +709,9 @@ function renderFrame(dt: number): void {
 
   camera.apply(ctx, viewW, viewH, dpr);
   drawWorld(ctx);
+  const lights = peopleLights(session.banksman, session.traffic);
   if (needsLightmap(yard.conditions)) {
-    atmosphere.drawLightmap(ctx, canvas.width, canvas.height, (c, k) => camera.apply(c, viewW, viewH, dpr * k), yard, artic);
+    atmosphere.drawLightmap(ctx, canvas.width, canvas.height, (c, k) => camera.apply(c, viewW, viewH, dpr * k), yard, artic, lights);
   }
   camera.apply(ctx, viewW, viewH, dpr);
   debug.drawWorld(
@@ -714,6 +724,8 @@ function renderFrame(dt: number): void {
   if (yard.conditions.rain) atmosphere.drawRain(ctx, viewW, viewH, paused ? 0 : dt);
   if (mode !== 'play') return;
 
+  // Far off, he waves you over (a bubble over him); after that his calls go in the HUD line below.
+  if (session.banksman?.signal === 'wave' && session.state === 'driving') drawBanksmanLabel(ctx, session.banksman, camera, viewW, viewH);
   const compact = touch.active || !!replaying;
   const hudBottom = drawHud(ctx, artic, viewW, viewH, compact);
   const statsBottom = drawRunStats(ctx, session, viewW);
@@ -721,6 +733,10 @@ function renderFrame(dt: number): void {
   if (session.state === 'driving' && session.bayCheck.near) {
     drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
     guideBottom = statsBottom + 70;
+  }
+  const b = session.banksman;
+  if (b && b.signal !== 'wave' && session.state === 'driving' && !session.bayCheck.ok) {
+    guideBottom = drawBanksmanCall(ctx, b, viewW, guideBottom);
   }
   if (compact) {
     // Touch: tip between the wheel and the pedals; mirrors between the top
@@ -732,11 +748,11 @@ function renderFrame(dt: number): void {
       else drawTip(ctx, tutorial.current, viewW, viewH, { x: 12, width: viewW - 24, bottom: viewH * 0.5 });
     }
     const controlsTop = viewH - 14 - Math.max(touchLayout.wheel, touchLayout.pedalH);
-    mirrors.draw(ctx, viewW, dpr, Math.max(hudBottom + 12, 64), controlsTop - 12, artic, yard, drawWorld);
+    mirrors.draw(ctx, viewW, dpr, Math.max(hudBottom + 12, 64), controlsTop - 12, artic, yard, drawWorld, lights);
   } else {
     // The tip sits above the gauges; the mirrors fit in the space above that.
     const tipTop = tutorial.current ? drawTip(ctx, tutorial.current, viewW, viewH) : viewH - hudHeight(viewW, viewH);
-    mirrors.draw(ctx, viewW, dpr, Math.max(90, guideBottom - 40), tipTop - 16, artic, yard, drawWorld);
+    mirrors.draw(ctx, viewW, dpr, Math.max(90, guideBottom - 40), tipTop - 16, artic, yard, drawWorld, lights);
   }
   toasts.draw(ctx, paused ? 0 : dt, viewW, viewH);
   debug.drawScreen(ctx, artic);

@@ -1,7 +1,7 @@
 {
   "id": "01-first-drop",
   "name": "First Drop",
-  "brief": "An empty dock and a straight run back onto Bay 3. Nice and steady – nobody's watching. Yet.",
+  "brief": "An empty dock and a straight run back onto Bay 3. There's a banksman on the bay to talk you in – watch him in your mirror.",
   "width": 60,
   "height": 55,
   "buildings": [{ "x": 0, "y": 0, "w": 60, "h": 8 }],
@@ -18,6 +18,10 @@
     {
       "trigger": "reversing",
       "text": "Watch the trailer, not the cab. To swing the back of the trailer left, steer right – and the other way round. Small inputs!"
+    },
+    {
+      "trigger": "banksman",
+      "text": "The banksman calls out steering: “left hand down” means steer left. If he blows his whistle – stop!"
     },
     {
       "trigger": "drift",
@@ -40,5 +44,6 @@
       "text": "Contact! Each bump adds 5 seconds. Anything at 2.5 mph or more and it's game over."
     }
   ],
-  "driveOut": [{ "throttle": 1, "steer": 0, "dist": 20 }]
+  "driveOut": [{ "throttle": 1, "steer": 0, "dist": 20 }],
+  "banksman": { "side": "right" }
 }

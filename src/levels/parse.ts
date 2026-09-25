@@ -11,6 +11,8 @@ import type {
   ObstacleDef,
   Spawn,
   StarTarget,
+  BanksmanDef,
+  TrafficDef,
   TutorialTip,
   YardLayout,
 } from '../game/yard.ts';
@@ -64,6 +66,8 @@ export interface LevelFile {
   stars: { three: StarTarget; two: StarTarget };
   conditions?: Conditions;
   tutorial?: TutorialTip[];
+  banksman?: BanksmanDef;
+  traffic?: TrafficDef[];
   /** Proof that the level is solvable: a drive OUT of the target bay to the spawn. */
   driveOut?: DriveMove[];
 }
@@ -128,5 +132,7 @@ export function parseLevel(file: LevelFile, number: number): YardLayout {
     stars: file.stars,
     conditions: file.conditions ?? {},
     tutorial: file.tutorial ?? [],
+    banksman: file.banksman,
+    traffic: file.traffic ?? [],
   };
 }

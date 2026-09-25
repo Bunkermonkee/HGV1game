@@ -2,9 +2,10 @@
 import { TRAILER } from '../config/vehicle.ts';
 import { DEG } from '../core/math.ts';
 import { obbFromFrame, type OBB } from '../physics/geometry.ts';
+import { banksmanBox } from './banksman.ts';
 import { BUFFER, type YardLayout } from './yard.ts';
 
-export type ObstacleKind = 'wall' | 'kerb' | 'cone' | 'bollard' | 'trailer' | 'buffer';
+export type ObstacleKind = 'wall' | 'kerb' | 'cone' | 'bollard' | 'trailer' | 'buffer' | 'person' | 'vehicle';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -17,6 +18,8 @@ export interface Obstacle {
   colour?: string;
   /** Part of a building (drawn with the yard, not as an obstacle). */
   building?: boolean;
+  /** Name used in messages, when more specific than the kind (e.g. "forklift"). */
+  label?: string;
 }
 
 /** What the driver hit, for the fail message. */
@@ -27,6 +30,8 @@ export const OBSTACLE_NAMES: Record<ObstacleKind, string> = {
   bollard: 'bollard',
   trailer: 'parked trailer',
   buffer: 'dock buffers',
+  person: 'banksman',
+  vehicle: 'vehicle',
 };
 
 const CONE = 0.22;
@@ -75,6 +80,9 @@ export function buildObstacles(yard: YardLayout): Obstacle[] {
       );
     }
   }
+
+  const target = yard.bays.find((b) => b.target);
+  if (yard.banksman && target) out.push(make('person', banksmanBox(target, yard.banksman)));
 
   for (const o of yard.obstacles ?? []) {
     switch (o.kind) {

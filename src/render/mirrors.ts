@@ -44,6 +44,7 @@ export class Mirrors {
     artic: Artic,
     yard: YardLayout,
     drawWorld: (ctx: CanvasRenderingContext2D) => void,
+    lights: { x: number; y: number; r: number; s: number }[] = [],
   ): void {
     if (!this.enabled) return;
     const w = Math.round(Math.min(220, Math.max(110, viewW * 0.18)));
@@ -63,7 +64,7 @@ export class Mirrors {
       v.ctx.fillRect(0, 0, pw, ph);
       setWorld(v.ctx, 1);
       drawWorld(v.ctx);
-      v.atmosphere.drawLightmap(v.ctx, pw, ph, setWorld, yard, artic);
+      v.atmosphere.drawLightmap(v.ctx, pw, ph, setWorld, yard, artic, lights);
 
       const x = v.side < 0 ? 10 : viewW - w - 10;
       main.save();

@@ -3,9 +3,10 @@
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
 TypeScript, built with Vite into one static folder. No backend, no CDNs.
 
-> **Status: version 1.1.** 10 levels, a Daily Yard, night/rain, Pro-view
-> mirrors, touch and gamepad controls, synthesised sound, share card, and an
-> online leaderboard with verified replays. See [Deploying](#deploying),
+> **Status: version 1.2.** 10 levels, a Daily Yard, a banksman and yard
+> traffic, night/rain, Pro-view mirrors, touch and gamepad controls,
+> synthesised sound, share card, and an online leaderboard with verified
+> replays. See [Deploying](#deploying),
 > [Leaderboard](#leaderboard-serverapi) and [Version 2 ideas](#version-2-ideas). The full
 > deploy/WordPress guide will be added at the end.
 
@@ -78,16 +79,16 @@ reloads.
 
 | # | Name | What's new |
 | --- | --- | --- |
-| 1 | First Drop | Straight back, empty dock, tutorial prompts |
+| 1 | First Drop | Straight back, empty dock, tutorial prompts, a banksman |
 | 2 | Tight Squeeze | Straight back between parked trailers, slightly off line |
-| 3 | Sight Side | First 90° reverse, trailer swinging to the driver's side |
+| 3 | Sight Side | First 90° reverse, trailer swinging to the driver's side (banksman) |
 | 4 | Cone Alley | Sight side with a coned-off yard |
-| 5 | Blind Side | 90° onto the nearside |
-| 6 | Sawtooth | 45° angled bays in a busy yard |
+| 5 | Blind Side | 90° onto the nearside, banksman on the blind side |
+| 6 | Sawtooth | 45° angled bays in a busy yard, a forklift on the apron |
 | 7 | Short Run-Up | Cramped yard – shunts expected |
-| 8 | Night Shift | Dark yard: headlights, reversing lights and dim dock lamps only |
-| 9 | Wet Wednesday | Rain: fog, and 70% grip on forward pull-ups |
-| 10 | The Monday Morning | Tight, blind side, trailers both sides, tough targets |
+| 8 | Night Shift | Dark yard: headlights, reversing lights and dim dock lamps only (banksman with a torch) |
+| 9 | Wet Wednesday | Rain: fog, and 70% grip on forward pull-ups; a yard shunter in the murk |
+| 10 | The Monday Morning | Tight, blind side, trailers both sides, a forklift, tough targets |
 
 Levels unlock one at a time; stars and best times are saved per level.
 For testing, add `#unlock-all` (or `#unlockall`) to the end of the URL to
@@ -113,7 +114,16 @@ rebuild; no code changes are needed. The main fields:
 - `conditions` – `night`, `rain`, `forwardGrip` (0–1), `visibility` (metres).
 - `stars` – `three` and `two`, each `{ shunts, time }`.
 - `tutorial` – `{ trigger, text }` prompts. The triggers are `start`,
-  `reversing`, `drift`, `nearBay`, `aligned`, `shunt` and `contact`.
+  `reversing`, `drift`, `nearBay`, `aligned`, `shunt`, `contact` and
+  `banksman` (his first call).
+- `banksman` – `{ side: "right" | "left" }`: a banksman at the target bay's
+  mouth, on the driver's (offside) or nearside side as seen from the parked
+  cab. See [Banksman and yard traffic](#banksman-and-yard-traffic).
+- `traffic` – yard vehicles:
+  `{ kind: "forklift" | "shunter", path: [[x, y], …], speed, mode?:
+  "pingpong" | "loop", pause?, start? }`. A pingpong route goes there and
+  back (reversing back, pausing `pause` seconds at each end); a loop goes
+  round and round. `start` is metres along the route at the start.
 - `driveOut` – a list of `{ throttle: 1 | -1, steer: -1…1, dist: metres }`
   moves that drive the rig OUT of the bay. This is the level's proof that it
   can be solved.
@@ -130,6 +140,43 @@ fails the level if anything is touched. The vehicle model is
 time-reversible, so a clean drive-out proves the reverse-in exists, and
 `--write` puts the truck where the drive-out ends. It also prints the
 route length and shunts as a guide for star targets. (Needs Node 22.6+.)
+
+The banksman counts as a fixed obstacle in the proof. Traffic gives way, so
+it can't make a level unsolvable; instead the checker drives each route once
+and fails the level if a vehicle leaves the yard, touches anything, enters
+the target bay, starts within 1.5 m of the rig, or crosses another route.
+
+## Banksman and yard traffic
+
+**Banksman** (`src/game/banksman.ts`). He stands by the target bay and talks
+you in with hand signals, shown in a line under the bay guide:
+
+- **OVER HERE** – you're too far away or too far round for him to help yet
+  (a bubble over him, so you can find him);
+- **COME BACK** / **STEADY…** – keep coming, then slow for the last couple of
+  metres;
+- **LEFT HAND DOWN** / **RIGHT HAND DOWN** – steer further left or right.
+  He reads the rig like an experienced driver: from where the back of the
+  trailer is, which way it points and how much it's articulated, he works
+  out where the wheel should be and calls the difference;
+- **STOP!** (with a whistle) – on the buffers, or if the rig is about to
+  hit something;
+- **PULL FORWARD** (short whistle) – too far off line to save; take a
+  shunt.
+
+He walks out of the way along the bay mouth if the rig comes close (more
+margin the faster it's moving) and goes back to his spot when it's clear.
+Hitting him fails the run. His movement is stepped with the physics, so
+replays stay exact.
+
+**Traffic** (`src/game/traffic.ts`). Forklifts (2.8 × 1.25 m) and yard
+shunters (5.4 × 2.5 m) drive fixed routes with flashing beacons. Each one
+looks a metre ahead and waits if that would bring it within 1.2 m of your
+rig (its beacon flashes faster while it waits). It never drives into you,
+but you can drive into it: that's a contact, or a fail at speed. Traffic is
+also stepped with the physics.
+
+At night the banksman's torch and the vehicles' beacons light up the yard.
 
 ## Night, rain and Pro view
 
@@ -156,7 +203,11 @@ has its own leaderboard for the day.
     sawtooth, or a tight yard needing shunts;
   - the target bay and parked trailers;
   - sometimes a cone line;
-  - about one day in seven at night, and one in seven in the rain.
+  - about one day in seven at night, and one in seven in the rain;
+  - from 28 September 2026, a banksman on about half of days and a forklift
+    or shunter on about a third. These come from their own random stream and
+    are only kept if the yard still passes its checks, so earlier days (and
+    their replays) are unchanged.
 - Every candidate layout must pass the same drive-out proof as the 10
   levels, with at least 0.25 m to spare. The spawn and star targets come from
   that proof, so every day is solvable.
@@ -238,6 +289,8 @@ and nothing extra to download:
 - **Bumps:** a thud on contact, a lighter plastic knock for cones, and a
   heavier crunch for a heavy hit or a jackknife.
 - **Delivered:** a quiet two-note chime.
+- **Banksman's whistle:** a pea-whistle blast for STOP, a short one for
+  PULL FORWARD.
 
 Sound only starts after the first tap, click or key press. It is kept quiet
 (`MASTER_VOLUME` = 0.32, peaks well below clipping) because the station's
@@ -344,6 +397,9 @@ src/game/yard.ts      runtime level types
 src/game/tutorial.ts  tutorial prompts
 src/game/session.ts   one attempt: collisions, time, shunts, contacts, stars
 src/game/obstacles.ts yard data → collision boxes
+src/game/banksman.ts  banksman: signals and stepping out of the way
+src/game/traffic.ts   forklifts and yard shunters
+src/render/draw-people.ts  banksman and traffic art, HUD call line
 src/game/bay.ts       "parked correctly?" check
 src/game/storage.ts   localStorage progress
 src/config/rules.ts   scoring and contact rules
@@ -416,7 +472,7 @@ editor) and paste:
 ## Version 2 ideas
 
 Done in 1.1: weekly/all-time leaderboards with verified replays, the Daily
-Yard, and deterministic physics.
+Yard, and deterministic physics. Done in 1.2: a banksman and yard traffic.
 
 Station and community:
 
@@ -435,7 +491,6 @@ Gameplay:
 - Mirrors-only mode, with no top-down view.
 - A replay of each run with the wheel tracks drawn, and a ghost of your
   best run.
-- A banksman giving hand signals, and moving yard traffic.
 - A trailer path prediction line as a beginner assist, and a bay-guide-off
   "pro" setting.
 - An accuracy score (e.g. "0.04 m off centre") on the delivery note as a

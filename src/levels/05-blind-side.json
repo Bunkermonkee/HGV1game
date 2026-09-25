@@ -1,7 +1,7 @@
 {
   "id": "05-blind-side",
   "name": "Blind Side",
-  "brief": "Bay 4 is on the nearside. Once the trailer swings round you lose sight of it – trust your mirrors and the gauge.",
+  "brief": "Bay 4 is on the nearside. Once the trailer swings round you lose sight of it – and the banksman. Trust your mirrors, and if you can't see him, stop.",
   "width": 90,
   "height": 50,
   "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
@@ -18,5 +18,6 @@
     { "throttle": 1, "steer": 0, "dist": 8 },
     { "throttle": 1, "steer": -0.6, "dist": 17 },
     { "throttle": 1, "steer": 0, "dist": 16 }
-  ]
+  ],
+  "banksman": { "side": "left" }
 }

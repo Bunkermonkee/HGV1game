@@ -1,7 +1,7 @@
 {
   "id": "08-night-shift",
   "name": "Night Shift",
-  "brief": "3am, the yard lights are out and it's just you, your headlights and the reversing lights. Bay 6, sight side.",
+  "brief": "3am, the yard lights are out and it's just you, your headlights, the reversing lights and the banksman's torch. Bay 6, sight side.",
   "width": 90,
   "height": 50,
   "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
@@ -21,5 +21,6 @@
     { "throttle": 1, "steer": 0, "dist": 8 },
     { "throttle": 1, "steer": 0.6, "dist": 17 },
     { "throttle": 1, "steer": 0, "dist": 14 }
-  ]
+  ],
+  "banksman": { "side": "right" }
 }

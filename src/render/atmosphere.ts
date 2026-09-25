@@ -96,6 +96,7 @@ export class Atmosphere {
     setWorld: SetWorld,
     yard: YardLayout,
     artic: Artic,
+    extra: { x: number; y: number; r: number; s: number }[] = [],
   ): void {
     const c = yard.conditions;
     if (!needsLightmap(c)) return;
@@ -116,6 +117,7 @@ export class Atmosphere {
     setWorld(l, LIGHTMAP_SCALE);
     if (c.night) {
       cutNightLights(l, yard, artic);
+      for (const e of extra) glow(l, e.x, e.y, e.r, e.s);
     } else if (c.visibility) {
       // Fog: clear around the rig, thickening with distance.
       const r = artic.trailerRear;

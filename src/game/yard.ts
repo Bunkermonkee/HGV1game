@@ -76,7 +76,31 @@ export interface Conditions {
   visibility?: number;
 }
 
-export type TipTrigger = 'start' | 'reversing' | 'drift' | 'nearBay' | 'aligned' | 'shunt' | 'contact';
+export type TipTrigger = 'start' | 'reversing' | 'drift' | 'nearBay' | 'aligned' | 'shunt' | 'contact' | 'banksman';
+
+/** A banksman standing by the target bay, signalling to the driver. */
+export interface BanksmanDef {
+  /**
+   * Which side of the bay mouth he stands on, as seen by a driver parked in
+   * the bay: 'right' is the driver's (offside) side.
+   */
+  side: 'left' | 'right';
+}
+
+/** A yard vehicle driving a fixed route. It gives way to the player's rig. */
+export interface TrafficDef {
+  kind: 'forklift' | 'shunter';
+  /** Route points [x, y] in metres. */
+  path: [number, number][];
+  /** Metres per second. */
+  speed: number;
+  /** 'pingpong': there and back (reversing back, like a forklift). 'loop': round and round. */
+  mode?: 'pingpong' | 'loop';
+  /** Seconds to wait at each end of a pingpong route. */
+  pause?: number;
+  /** Metres along the route at the start of the level. */
+  start?: number;
+}
 
 export interface TutorialTip {
   trigger: TipTrigger;
@@ -101,6 +125,8 @@ export interface YardLayout {
   stars: { three: StarTarget; two: StarTarget };
   conditions: Conditions;
   tutorial: TutorialTip[];
+  banksman?: BanksmanDef;
+  traffic: TrafficDef[];
 }
 
 /** Dock buffer geometry (bay frame: along = out of the bay, lateral = across). */

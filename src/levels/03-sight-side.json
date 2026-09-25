@@ -17,5 +17,6 @@
     { "throttle": 1, "steer": 0, "dist": 8 },
     { "throttle": 1, "steer": 0.6, "dist": 17 },
     { "throttle": 1, "steer": 0, "dist": 16 }
-  ]
+  ],
+  "banksman": { "side": "right" }
 }

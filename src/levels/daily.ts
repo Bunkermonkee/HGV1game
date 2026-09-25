@@ -6,15 +6,21 @@
  * the target bay touches nothing with room to spare (see proof.ts); where
  * that drive-out ends becomes the spawn. If a candidate fails, the next
  * attempt is tried, so every day is guaranteed solvable.
+ *
+ * Banksmen and yard traffic are added afterwards from their own random
+ * stream, so they never change the yard itself, and only from PEOPLE_FROM on
+ * so yards (and replays) from before they existed stay exactly as they were.
  */
 import type { DriveMove } from './parse.ts';
-import type { Bay, Building, Conditions, ObstacleDef, YardLayout } from '../game/yard.ts';
-import { runDriveOut } from './proof.ts';
+import type { Bay, BanksmanDef, Building, Conditions, ObstacleDef, TrafficDef, YardLayout } from '../game/yard.ts';
+import { checkTraffic, runDriveOut } from './proof.ts';
 
 const PREFIX = 'daily-';
 const BAY_W = 3.8;
 const DOCK_Y = 8;
 const CLEARANCE = 0.25;
+/** First Daily Yard that can have a banksman or traffic. */
+const PEOPLE_FROM = '2026-09-28';
 const COLOURS = ['#8a3b2f', '#3c6b44', '#6b6f76', '#2f4f7a', '#7a5c2f', '#5b3a6b', '#9a9a96'];
 
 /** Today's date in the UK as YYYY-MM-DD (the Daily Yard changes at UK midnight). */
@@ -185,8 +191,50 @@ function candidate(date: string, attempt: number, kind: Kind, turn: number): Can
     stars: { three: { shunts: 0, time: 60 }, two: { shunts: 2, time: 110 } },
     conditions,
     tutorial: [],
+    traffic: [],
   };
   return { layout, moves, kind, side };
+}
+
+/**
+ * Maybe add a banksman (about half of days) and a forklift or shunter
+ * (about a third), each kept only if the yard still checks out with it.
+ */
+function addPeople(yard: YardLayout, moves: DriveMove[], date: string): YardLayout {
+  if (date < PEOPLE_FROM) return yard;
+  const rand = rng(hash(`${date}#people`));
+  let out = yard;
+  if (rand() < 0.5) {
+    const first: BanksmanDef['side'] = rand() < 0.5 ? 'right' : 'left';
+    const sides: BanksmanDef['side'][] = [first, first === 'right' ? 'left' : 'right'];
+    for (const side of sides) {
+      const withBanksman = { ...out, banksman: { side } };
+      if (runDriveOut(withBanksman, moves, CLEARANCE).ok) {
+        out = withBanksman;
+        break;
+      }
+    }
+  }
+  if (rand() < 0.35) {
+    const kind: TrafficDef['kind'] = rand() < 0.7 ? 'forklift' : 'shunter';
+    const half = kind === 'forklift' ? 2 : 3.5;
+    const speed = r2(kind === 'forklift' ? 1.8 + rand() * 0.7 : 2.6 + rand() * 0.6);
+    const pause = r2(2 + rand() * 2);
+    // A lane across the yard between the dock apron and the back fence; try a few.
+    const lanes: number[] = [];
+    for (let y = DOCK_Y + 19; y < yard.height - 4; y += 1.5) lanes.push(r2(y));
+    const offset = Math.floor(rand() * lanes.length);
+    for (let k = 0; k < lanes.length; k++) {
+      const y = lanes[(offset + k) % lanes.length];
+      const def: TrafficDef = { kind, path: [[4 + half, y], [yard.width - 4 - half, y]], speed, pause, start: r2(rand() * 40) };
+      const withTraffic = { ...out, traffic: [def] };
+      if (!checkTraffic(withTraffic)) {
+        out = withTraffic;
+        break;
+      }
+    }
+  }
+  return out;
 }
 
 function describe(c: Candidate, shunts: number): string {
@@ -202,6 +250,13 @@ function describe(c: Candidate, shunts: number): string {
   const cond = c.layout.conditions;
   const weather = cond.night ? ' In the dark.' : cond.rain ? ' In the rain.' : '';
   return `${what}.${weather} Same yard for everyone today – see where you rank by midnight.`;
+}
+
+function describePeople(yard: YardLayout): string {
+  const bits: string[] = [];
+  if (yard.banksman) bits.push('A banksman will talk you in.');
+  if (yard.traffic.length) bits.push(`Watch out for the ${yard.traffic[0].kind === 'forklift' ? 'forklift' : 'yard shunter'}.`);
+  return bits.length ? ' ' + bits.join(' ') : '';
 }
 
 const cache = new Map<string, YardLayout>();
@@ -222,12 +277,15 @@ export function generateDaily(date: string): YardLayout {
     // The spawn must be on the tarmac with the whole rig in the yard.
     if (end.x < 3 || end.x > c.layout.width - 3 || end.y < DOCK_Y + 3 || end.y > c.layout.height - 3) continue;
     const three = Math.ceil((proof.pathLength / 1.2 + 6 * (proof.shunts + 1) + 8) / 5) * 5;
-    chosen = {
+    const base: YardLayout = {
       ...c.layout,
       spawn: end,
       stars: { three: { shunts: proof.shunts, time: three }, two: { shunts: proof.shunts + 2, time: Math.ceil((three * 1.8) / 5) * 5 } },
-      brief: describe(c, proof.shunts),
     };
+    const withPeople = addPeople(base, c.moves, date);
+    const people = describePeople(withPeople);
+    const brief = describe(c, proof.shunts);
+    chosen = { ...withPeople, brief: people ? brief.replace(' Same yard', `${people} Same yard`) : brief };
   }
   if (!chosen) throw new Error(`No Daily Yard could be generated for ${date}`);
   cache.set(date, chosen);

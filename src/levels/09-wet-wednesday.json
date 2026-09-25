@@ -1,7 +1,7 @@
 {
   "id": "09-wet-wednesday",
   "name": "Wet Wednesday",
-  "brief": "Chucking it down. Poor visibility, and the drive wheels scrabble when you pull forward. Bay 5, blind side.",
+  "brief": "Chucking it down. Poor visibility, a yard shunter coming out of the murk, and the drive wheels scrabble when you pull forward. Bay 5, blind side.",
   "width": 90,
   "height": 50,
   "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
@@ -20,5 +20,6 @@
     { "throttle": 1, "steer": 0, "dist": 8 },
     { "throttle": 1, "steer": -0.6, "dist": 17 },
     { "throttle": 1, "steer": 0, "dist": 14 }
-  ]
+  ],
+  "traffic": [{ "kind": "shunter", "path": [[86, 29.5], [36, 29.5]], "speed": 3, "pause": 4 }]
 }

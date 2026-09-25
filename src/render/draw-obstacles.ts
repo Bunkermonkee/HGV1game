@@ -111,6 +111,9 @@ export function drawObstacles(ctx: CanvasRenderingContext2D, obstacles: Obstacle
         break;
       case 'buffer':
         break; // drawn with the bay markings
+      case 'person':
+      case 'vehicle':
+        break; // the banksman and yard traffic have their own drawing
     }
   }
 }

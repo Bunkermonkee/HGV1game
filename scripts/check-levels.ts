@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { ARTICULATION } from '../src/config/vehicle.ts';
 import { Session } from '../src/game/session.ts';
 import { parseLevel, type LevelFile } from '../src/levels/parse.ts';
-import { parkOnBay, rigOverlaps, runDriveOut } from '../src/levels/proof.ts';
+import { checkTraffic, parkOnBay, rigOverlaps, runDriveOut } from '../src/levels/proof.ts';
 
 const DIR = join(import.meta.dirname, '../src/levels');
 const WRITE = process.argv.includes('--write');
@@ -71,6 +71,11 @@ files.forEach((name, i) => {
   parkOnBay(s);
   const hitParked = rigOverlaps(s);
   if (hitParked) problems.push(`parked position on bay ${s.bay.label} overlaps a ${hitParked}`);
+
+  const trafficProblem = checkTraffic(yard);
+  if (trafficProblem) problems.push(trafficProblem);
+  if (yard.banksman) notes.push(`banksman on the ${yard.banksman.side} of bay ${s.bay.label}`);
+  if (yard.traffic.length) notes.push(`traffic: ${yard.traffic.map((t) => t.kind).join(', ')}`);
 
   if (file.driveOut?.length && !hitParked) {
     const proof = runDriveOut(yard, file.driveOut);

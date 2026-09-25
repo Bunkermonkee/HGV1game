@@ -7,7 +7,9 @@ import { DEG, MPH_TO_MS } from '../core/math.ts';
 import { Artic, type DriveInput } from '../physics/artic.ts';
 import { inflate, obbOverlap } from '../physics/sat.ts';
 import { bayProblem, checkBay, type BayCheck } from './bay.ts';
+import { Banksman, type Signal } from './banksman.ts';
 import { ReplayRecorder, STEP, type ReplayData } from './replay.ts';
+import { TRAFFIC_SIZE, TrafficVehicle } from './traffic.ts';
 import { buildObstacles, OBSTACLE_NAMES, type Obstacle } from './obstacles.ts';
 import type { Bay, YardLayout } from './yard.ts';
 
@@ -37,6 +39,7 @@ export type SessionEvent =
   | { type: 'buffers' }
   | { type: 'message'; text: string }
   | { type: 'fail'; title: string; reason: string }
+  | { type: 'banksman'; signal: Signal }
   | { type: 'success'; result: RunResult };
 
 const NO_INPUT: DriveInput = { steerMode: 'rate', steer: 0, throttle: 0 };
@@ -61,6 +64,12 @@ export class Session {
   stepCount = 0;
   /** Records the run for replays; off while playing a replay back. */
   recording = true;
+  /** Run the yard traffic and let the banksman walk (the solvability proof turns this off). */
+  simulateTraffic = true;
+  banksman: Banksman | null = null;
+  traffic: TrafficVehicle[] = [];
+  private trafficObstacles: Obstacle[] = [];
+  private personObstacle: Obstacle | null = null;
   private recorder: ReplayRecorder | null = null;
 
   private started = false;
@@ -86,6 +95,18 @@ export class Session {
     this.stepCount = 0;
     this.recorder = this.recording ? new ReplayRecorder(this.yard.id) : null;
     this.obstacles = buildObstacles(this.yard);
+    const statics = this.obstacles.filter((o) => o.kind !== 'person').map((o) => o.box);
+    this.banksman = this.yard.banksman ? new Banksman(this.bay, this.yard.banksman, statics) : null;
+    this.personObstacle = this.obstacles.find((o) => o.kind === 'person') ?? null;
+    this.traffic = this.simulateTraffic ? this.yard.traffic.map((t) => new TrafficVehicle(t)) : [];
+    this.trafficObstacles = this.traffic.map((v) => ({
+      kind: 'vehicle' as const,
+      box: v.box,
+      soft: false,
+      hit: false,
+      label: TRAFFIC_SIZE[v.def.kind].label,
+    }));
+    this.obstacles.push(...this.trafficObstacles);
     this.state = 'driving';
     this.stateTime = 0;
     this.time = 0;
@@ -121,6 +142,19 @@ export class Session {
   step(input: DriveInput): void {
     const dt = STEP;
     this.stateTime += dt;
+    // People and yard traffic move first, keeping clear of where the rig is now.
+    // (The solvability proof keeps them still: see proof.ts.)
+    const rig = this.simulateTraffic ? [this.artic.tractorBox, this.artic.trailerBox] : [];
+    if (this.banksman && this.personObstacle && this.simulateTraffic && this.state === 'driving') {
+      this.banksman.walk(dt, rig, this.artic.speed);
+      this.personObstacle.box = this.banksman.box;
+    }
+    if (this.traffic.length) {
+      this.traffic.forEach((v, i) => {
+        v.step(dt, rig);
+        this.trafficObstacles[i].box = v.box;
+      });
+    }
     if (this.state !== 'driving') {
       this.artic.step(dt, NO_INPUT);
       return;
@@ -171,7 +205,18 @@ export class Session {
     if (this.artic.speed < 0) this.reverseDistance -= this.artic.speed * dt;
 
     this.bayCheck = checkBay(this.artic, this.bay);
+    const signal = this.banksman?.update(this.artic, dt, this.closeCall());
+    if (signal) this.events.push({ type: 'banksman', signal });
     this.judgeParking();
+  }
+
+  /** The rig is within half a metre of something solid (buffers aside): the banksman shouts. */
+  private closeCall(): boolean {
+    const t = inflate(this.artic.tractorBox, 0.5);
+    const r = inflate(this.artic.trailerBox, 0.5);
+    return this.obstacles.some(
+      (o) => !o.soft && o.kind !== 'buffer' && o.kind !== 'person' && (obbOverlap(t, o.box) || obbOverlap(r, o.box)),
+    );
   }
 
   /**
@@ -184,6 +229,7 @@ export class Session {
     let blocked = false;
     let worst: { o: Obstacle; hard: boolean } | null = null;
     let buffered = false;
+    let hitPerson = false;
 
     for (const o of this.obstacles) {
       if (o.soft && o.hit) continue;
@@ -197,6 +243,7 @@ export class Session {
         continue;
       }
       blocked = true;
+      if (o.kind === 'person') hitPerson = true;
       if (this.touching.has(o)) continue;
       this.touching.add(o);
 
@@ -210,12 +257,19 @@ export class Session {
       if (!worst || (hard && !worst.hard)) worst = { o, hard };
     }
 
+    if (hitPerson) {
+      this.fail(
+        'BANKSMAN HIT',
+        "You hit the banksman. On a real yard that's the end of the job. Keep them in your mirrors, and if you lose sight of them, stop.",
+      );
+      return true;
+    }
     if (worst) {
       if (worst.hard) {
         const mph = (impactSpeed / MPH_TO_MS).toFixed(1);
         this.fail(
           'HEAVY CONTACT',
-          `You hit the ${OBSTACLE_NAMES[worst.o.kind]} at ${mph} mph. Anything over ${RULES.contact.hardSpeedMph} mph means a claim form and a chat with the transport manager.`,
+          `You hit the ${worst.o.label ?? OBSTACLE_NAMES[worst.o.kind]} at ${mph} mph. Anything over ${RULES.contact.hardSpeedMph} mph means a claim form and a chat with the transport manager.`,
         );
       } else {
         this.addContact(worst.o);
@@ -235,7 +289,7 @@ export class Session {
 
   private addContact(o: Obstacle): void {
     this.contacts++;
-    this.events.push({ type: 'contact', label: OBSTACLE_NAMES[o.kind] });
+    this.events.push({ type: 'contact', label: o.label ?? OBSTACLE_NAMES[o.kind] });
   }
 
   private judgeParking(): void {

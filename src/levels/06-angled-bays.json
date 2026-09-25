@@ -1,7 +1,7 @@
 {
   "id": "06-angled-bays",
   "name": "Sawtooth",
-  "brief": "A busy distribution centre with 45° sawtooth bays. Get onto Bay 5 without clipping your neighbours.",
+  "brief": "A busy distribution centre with 45° sawtooth bays and a forklift working the apron. Get onto Bay 5 without clipping your neighbours.",
   "width": 80,
   "height": 56,
   "buildings": [{ "x": 0, "y": 0, "w": 80, "h": 8.4 }],
@@ -22,5 +22,6 @@
     { "throttle": 1, "steer": 0, "dist": 12 },
     { "throttle": 1, "steer": 0.45, "dist": 9 },
     { "throttle": 1, "steer": 0, "dist": 12 }
-  ]
+  ],
+  "traffic": [{ "kind": "forklift", "path": [[4, 31], [76, 31]], "speed": 2.2, "pause": 3 }]
 }

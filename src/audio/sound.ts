@@ -267,4 +267,31 @@ export class Sound {
       o.stop(start + 0.75);
     });
   }
+  /** Banksman's whistle: a pea whistle's warbling blast (long for STOP, short to call attention). */
+  whistle(long = true): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const t = ctx.currentTime;
+    const dur = long ? 0.55 : 0.18;
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = 2900;
+    // The pea rattling in the chamber: a fast frequency trill.
+    const trill = ctx.createOscillator();
+    trill.frequency.value = 28;
+    const depth = ctx.createGain();
+    depth.gain.value = 180;
+    trill.connect(depth).connect(o.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.09, t + 0.02);
+    g.gain.setValueAtTime(0.09, t + dur - 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(this.master);
+    this.noiseBurst('bandpass', 3000, 4, 0.04, 0.01, dur);
+    o.start(t);
+    trill.start(t);
+    o.stop(t + dur + 0.02);
+    trill.stop(t + dur + 0.02);
+  }
 }
