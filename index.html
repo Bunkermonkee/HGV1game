@@ -51,6 +51,7 @@
           <h1 id="game-title" class="game-title">Yard Master</h1>
           <p class="tagline">Ten yards. One bay each. Back it on straight.</p>
           <button id="btn-play" class="btn primary big" type="button">Play</button>
+          <button id="btn-board" class="btn hidden" type="button">Leaderboard</button>
           <div class="toggles">
             <button id="btn-proview" class="btn toggle" type="button" aria-pressed="false">Pro view mirrors: Off</button>
             <button id="btn-sound" class="btn toggle" type="button" aria-pressed="true">Sound: On</button>
@@ -65,8 +66,49 @@
             <button id="btn-select-back" class="btn small" type="button">Back</button>
             <h2 id="select-title">Choose a yard</h2>
             <span id="select-stars" class="select-stars"></span>
+            <button id="select-board" class="btn small hidden" type="button">Leaderboard</button>
           </header>
           <ol id="level-grid" class="level-grid"></ol>
+        </div>
+      </div>
+
+      <div id="board" class="overlay menu hidden" role="dialog" aria-labelledby="board-title">
+        <div class="board-panel">
+          <header class="select-head">
+            <button id="board-back" class="btn small" type="button">Back</button>
+            <h2 id="board-title">Leaderboard</h2>
+          </header>
+          <div class="board-controls">
+            <label class="sr-only" for="board-level">Which board</label>
+            <select id="board-level" name="board-level"></select>
+            <div class="tabs" role="tablist" aria-label="Period">
+              <button id="tab-week" role="tab" type="button" aria-selected="true">This week</button>
+              <button id="tab-all" role="tab" type="button" aria-selected="false">All time</button>
+            </div>
+          </div>
+          <p id="board-note" class="board-note"></p>
+          <div class="board-scroll">
+            <table class="board-table">
+              <thead><tr><th scope="col">#</th><th scope="col">Driver</th><th scope="col">Stars</th><th scope="col">Time</th><th scope="col">Shunts</th><th scope="col"><span class="sr-only">Replay</span></th></tr></thead>
+              <tbody id="board-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="replay-bar" class="replay-bar hidden" role="status">
+        <span class="replay-tag">Replay</span>
+        <span id="replay-info"></span>
+        <button id="replay-speed" class="t-btn" type="button" aria-label="Playback speed">1×</button>
+        <button id="replay-exit" class="t-btn" type="button" aria-label="Exit replay">✕</button>
+      </div>
+
+      <div id="replay-end" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="replay-end-title">
+        <div class="card">
+          <h1 id="replay-end-title">Replay finished</h1>
+          <p id="replay-verdict" class="replay-verdict"></p>
+          <button id="replay-again" class="btn primary" type="button">Watch again</button>
+          <button id="replay-back" class="btn" type="button">Back</button>
         </div>
       </div>
 
@@ -129,6 +171,20 @@
           </section>
           <section class="note-share">
             <img id="share-preview" alt="Your share card" width="1080" height="1080" />
+            <div id="lb-panel" class="lb-panel hidden">
+              <form id="lb-form" class="lb-form">
+                <label for="lb-name">Get on the leaderboard</label>
+                <div class="lb-row">
+                  <input id="lb-name" name="lb-name" maxlength="20" autocomplete="nickname" placeholder="Your name, e.g. Big Dave" required />
+                  <button id="lb-post" class="btn primary" type="submit">Post</button>
+                </div>
+              </form>
+              <p id="lb-status" class="lb-status" aria-live="polite"></p>
+              <div class="lb-links">
+                <button id="lb-view" class="btn small" type="button">View leaderboard</button>
+                <button id="lb-change" class="linklike" type="button">Change name</button>
+              </div>
+            </div>
             <div class="note-actions">
               <button id="btn-share" class="btn primary" type="button">Share</button>
               <button id="btn-download" class="btn" type="button">Download image</button>

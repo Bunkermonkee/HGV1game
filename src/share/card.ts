@@ -114,7 +114,7 @@ function statBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
   ctx.fillText(label, x + w / 2, y + 96);
 }
 
-export function renderShareCard(result: RunResult, session: Session): HTMLCanvasElement {
+export function renderShareCard(result: RunResult, session: Session, rankText?: string): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
   const ctx = c.getContext('2d')!;
@@ -132,7 +132,7 @@ export function renderShareCard(result: RunResult, session: Session): HTMLCanvas
   ctx.fillText(BRAND.gameName.toUpperCase(), SIZE - 60, 128);
   ctx.fillStyle = theme.brandSecondary;
   ctx.font = `700 26px ${theme.uiFont}`;
-  ctx.fillText(`${result.levelName} · Bay ${result.bay}`, SIZE - 60, 166);
+  ctx.fillText(`${result.levelName} · Bay ${result.bay}${rankText ? ` · ${rankText}` : ''}`, SIZE - 60, 166);
 
   scene(ctx, session, 60, 200, SIZE - 120, 400);
 

@@ -4,14 +4,17 @@
 import { Sound } from './audio/sound.ts';
 import { preloadBrand } from './config/brand.ts';
 import { RULES } from './config/rules.ts';
-import { SIMULATION, SPEED, STEERING } from './config/vehicle.ts';
+import { SPEED, STEERING } from './config/vehicle.ts';
 import { loadTheme, theme } from './config/theme.ts';
 import { GamepadInput, moveFocus, PAD } from './core/gamepad.ts';
 import { Keyboard } from './core/input.ts';
-import { DEG, MPH_TO_MS, damp, lerp, type Vec2 } from './core/math.ts';
+import { DEG, MPH_TO_MS, damp, lerp, wrapAngle, type Vec2 } from './core/math.ts';
 import { TouchControls } from './core/touch.ts';
-import { Session, type SessionEvent } from './game/session.ts';
+import { quantize, ReplayPlayer, STEP } from './game/replay.ts';
+import { Session, type RunResult, type SessionEvent } from './game/session.ts';
 import { loadSave, recordResult, saveSettings } from './game/storage.ts';
+import type { YardLayout } from './game/yard.ts';
+import { errorText, leaderboard, type StoredReplay } from './net/leaderboard.ts';
 import { Tutorial } from './game/tutorial.ts';
 import { LEVELS } from './levels/index.ts';
 import { obbCorners } from './physics/geometry.ts';
@@ -33,7 +36,9 @@ import {
   showLevelSelect,
   showTitle,
 } from './ui/menus.ts';
-import type { DriveInput } from './physics/artic.ts';
+import type { ArticSnapshot, DriveInput } from './physics/artic.ts';
+import { hideBoard, initBoard, isBoardOpen, showBoard, type BoardChoice } from './ui/board.ts';
+import { formatTime } from './render/hud.ts';
 import { hideScreens, initScreens, isScreenOpen, showFail, showResults } from './ui/screens.ts';
 
 loadTheme();
@@ -85,6 +90,17 @@ let lookBehind = 0;
 /** What to show once the end-of-run delay has passed. */
 let pendingScreen: (() => void) | null = null;
 let endBanner: { text: string; colour: string } | null = null;
+
+/** Fixed-step timing: leftover time, and the pose before the last step (for smooth rendering). */
+let accumulator = 0;
+let prevPose: ArticSnapshot | null = null;
+let renderAlpha = 1;
+
+/** Watching a recorded run. */
+let replaying: { player: ReplayPlayer; meta: StoredReplay; returnTo: () => void; result: RunResult | null } | null = null;
+let replaySpeed = 1;
+const replayBar = document.getElementById('replay-bar')!;
+const replayEnd = document.getElementById('replay-end')!;
 
 mirrors.enabled = loadSave().settings.proView;
 setProViewLabel(mirrors.enabled);
@@ -146,10 +162,22 @@ resize();
 
 function loadLevel(index: number): void {
   levelIndex = index;
-  const level = LEVELS[index];
+  loadLayout(LEVELS[index]);
+}
+
+function loadLayout(level: YardLayout): void {
   session = new Session(level);
-  tutorial = new Tutorial(level.tutorial, controlLabels());
+  tutorial = new Tutorial(replaying ? [] : level.tutorial, controlLabels());
+  if (replaying) {
+    session.recording = false;
+    session.reset();
+  }
   resetRun();
+}
+
+/** Find a level by id (campaign levels; Daily Yards are generated). */
+function levelById(id: string): YardLayout | null {
+  return LEVELS.find((l) => l.id === id) ?? null;
 }
 
 /** Put the truck back at the start of the current level. */
@@ -162,6 +190,8 @@ function resetRun(): void {
   hideScreens();
   toasts.clear();
   debug.clearTrails();
+  accumulator = 0;
+  prevPose = null;
   updateCamera(0, true);
 }
 
@@ -273,10 +303,16 @@ function handleEvent(e: SessionEvent): void {
       sound.crash();
       camera.shake(e.title === 'HEAVY CONTACT' ? 0.6 : 0.2);
       endBanner = { text: e.title, colour: theme.uiBad };
-      pendingScreen = () => showFail(e.title, e.reason);
+      pendingScreen = replaying ? showReplayEnd : () => showFail(e.title, e.reason);
       break;
     case 'success': {
       const r = e.result;
+      if (replaying) {
+        replaying.result = r;
+        endBanner = { text: 'DELIVERED', colour: theme.uiGood };
+        pendingScreen = showReplayEnd;
+        break;
+      }
       const level = LEVELS[levelIndex];
       const newBest = recordResult(r.levelId, level.number, r.stars, r.total, r.shunts);
       const best = loadSave().levels[r.levelId];
@@ -289,12 +325,113 @@ function handleEvent(e: SessionEvent): void {
   }
 }
 
+// ---- Leaderboard and replays ------------------------------------------------------
+
+function boardChoices(): BoardChoice[] {
+  return [{ id: 'overall', name: 'Overall – all 10 yards' }, ...LEVELS.map((l) => ({ id: l.id, name: `${l.number}. ${l.name}` }))];
+}
+
+/** Open the leaderboard; `back` is where its Back button goes. */
+function openBoard(levelId: string, back: () => void): void {
+  boardReturn = back;
+  hideMenus();
+  hideScreens();
+  mode = 'menu';
+  showBoard(boardChoices(), levelId);
+}
+let boardReturn: () => void = () => openTitle();
+
+async function watchScore(id: number, back: () => void): Promise<void> {
+  let stored: StoredReplay;
+  try {
+    stored = await leaderboard.replay(id);
+  } catch (err) {
+    toasts.show(errorText(err), theme.uiWarn, 3);
+    return;
+  }
+  startReplay(stored, back);
+}
+
+function startReplay(stored: StoredReplay, back: () => void): void {
+  const level = levelById(stored.levelId);
+  if (!level) {
+    toasts.show("That yard isn't available any more, so its replay can't be shown.", theme.uiWarn, 3);
+    return;
+  }
+  replaying = { player: new ReplayPlayer(stored.replay), meta: stored, returnTo: back, result: null };
+  hideBoard();
+  hideMenus();
+  hideScreens();
+  replayEnd.classList.add('hidden');
+  loadLayout(level);
+  mode = 'play';
+  setPaused(false);
+  document.getElementById('replay-info')!.textContent =
+    `${stored.name} · ${level.name} · ${formatTime(stored.totalMs / 1000)} · ${'★'.repeat(stored.stars)}`;
+  replayBar.classList.remove('hidden');
+}
+
+function exitReplay(): void {
+  if (!replaying) return;
+  const back = replaying.returnTo;
+  replaying = null;
+  replayBar.classList.add('hidden');
+  replayEnd.classList.add('hidden');
+  back();
+}
+
+function showReplayEnd(): void {
+  if (!replaying) return;
+  const m = replaying.meta;
+  const r = replaying.result;
+  const posted = `${formatTime(m.timeMs / 1000)}, ${m.shunts} shunt${m.shunts === 1 ? '' : 's'}, ${m.contacts || 'no'} contact${m.contacts === 1 ? '' : 's'}`;
+  const verdict = document.getElementById('replay-verdict')!;
+  if (r && r.shunts === m.shunts && r.contacts === m.contacts && Math.abs(r.time * 1000 - m.timeMs) <= 100) {
+    verdict.textContent = `✓ The replay matches the posted score (${posted}).`;
+  } else {
+    const got = r ? `${formatTime(r.time)}, ${r.shunts} shunts, ${r.contacts} contacts` : 'it did not finish';
+    verdict.textContent = `⚠ The replay doesn't match the posted score. Posted: ${posted}. Replay: ${got}. It may have been recorded on a different version of the game, or tampered with.`;
+  }
+  replayEnd.classList.remove('hidden');
+  document.getElementById('replay-again')!.focus();
+}
+
+initBoard({
+  onClose: () => {
+    hideBoard();
+    boardReturn();
+  },
+  onWatch: (id) => {
+    const sel = (document.getElementById('board-level') as HTMLSelectElement).value;
+    void watchScore(id, () => openBoard(sel, boardReturn));
+  },
+});
+document.getElementById('replay-exit')!.addEventListener('click', exitReplay);
+document.getElementById('replay-back')!.addEventListener('click', exitReplay);
+document.getElementById('replay-again')!.addEventListener('click', () => {
+  if (replaying) startReplay(replaying.meta, replaying.returnTo);
+});
+document.getElementById('replay-speed')!.addEventListener('click', cycleReplaySpeed);
+document.getElementById('btn-board')!.addEventListener('click', () => openBoard('overall', openTitle));
+document.getElementById('select-board')!.addEventListener('click', () =>
+  openBoard(LEVELS[levelIndex]?.id ?? 'overall', openLevelSelect),
+);
+
+function cycleReplaySpeed(): void {
+  replaySpeed = replaySpeed === 1 ? 2 : replaySpeed === 2 ? 4 : 1;
+  document.getElementById('replay-speed')!.textContent = `${replaySpeed}×`;
+}
+
 // ---- UI wiring -----------------------------------------------------------------
 
 initScreens({
   onRetry: restart,
   onNext: () => openBriefing(Math.min(levelIndex + 1, LEVELS.length - 1)),
   onLevelSelect: openLevelSelect,
+  onViewBoard: (levelId) => openBoard(levelId, () => {
+    hideBoard();
+    openLevelSelect();
+  }),
 });
 initMenus({
   onPlay: openLevelSelect,
@@ -335,7 +472,7 @@ const DRIVE_KEYS = ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'];
 /** Gamepad buttons: menus use the d-pad + A; in the cab, A = handbrake, Start = pause. */
 function handlePad(): void {
   if (gamepad.wasPressed(PAD.BACK)) toggleSound();
-  const overlayOpen = mode !== 'play' || paused || isScreenOpen();
+  const overlayOpen = mode !== 'play' || paused || isScreenOpen() || !replayEnd.classList.contains('hidden');
   if (overlayOpen) {
     if (gamepad.wasPressed(PAD.DOWN) || gamepad.wasPressed(PAD.RIGHT)) moveFocus(1);
     if (gamepad.wasPressed(PAD.UP) || gamepad.wasPressed(PAD.LEFT)) moveFocus(-1);
@@ -348,6 +485,10 @@ function handlePad(): void {
     if (mode === 'briefing' && (gamepad.wasPressed(PAD.RT) || gamepad.wasPressed(PAD.LT))) startDriving();
     return;
   }
+  if (replaying) {
+    if (gamepad.wasPressed(PAD.B) || gamepad.wasPressed(PAD.START)) exitReplay();
+    return;
+  }
   if (gamepad.wasPressed(PAD.A)) toggleHandbrake();
   if (gamepad.wasPressed(PAD.START)) setPaused(true);
   if (gamepad.wasPressed(PAD.Y)) restart();
@@ -356,6 +497,11 @@ function handlePad(): void {
 
 function handleKeys(): void {
   if (keys.wasPressed('Backquote') || keys.wasPressed('F3')) debug.enabled = !debug.enabled;
+  if (isBoardOpen() && keys.wasPressed('Escape')) {
+    hideBoard();
+    boardReturn();
+    return;
+  }
   if (keys.wasPressed('KeyV')) toggleProView();
   if (keys.wasPressed('KeyM')) toggleSound();
   if (mode === 'briefing') {
@@ -364,6 +510,12 @@ function handleKeys(): void {
     return;
   }
   if (mode !== 'play') return;
+  if (replaying) {
+    if (keys.wasPressed('Escape')) exitReplay();
+    if (keys.wasPressed('KeyR')) startReplay(replaying.meta, replaying.returnTo);
+    if (keys.wasPressed('KeyF')) cycleReplaySpeed();
+    return;
+  }
   if (keys.wasPressed('KeyR')) restart();
   if (isScreenOpen()) return;
   if (keys.wasPressed('Escape')) setPaused(!paused);
@@ -440,17 +592,40 @@ function readInput(): DriveInput {
   return { steerMode: 'rate', steer: g?.steer ?? 0, throttle };
 }
 
+/** Blend two poses for rendering between physics steps. */
+function lerpPose(a: ArticSnapshot, b: ArticSnapshot, t: number): ArticSnapshot {
+  return {
+    ...b,
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+    heading: a.heading + wrapAngle(b.heading - a.heading) * t,
+    trailerHeading: a.trailerHeading + wrapAngle(b.trailerHeading - a.trailerHeading) * t,
+  };
+}
+
 function update(dt: number): void {
-  const input = readInput();
-  lastThrottle = input.throttle;
-  // Split the frame into equal sub-steps no larger than maxStep: stable physics
-  // and no judder, whatever the display refresh rate.
-  const steps = Math.max(1, Math.ceil(dt / SIMULATION.maxStep));
-  const h = dt / steps;
-  for (let i = 0; i < steps; i++) {
-    session.step(h, input);
+  const live = quantize(readInput());
+  lastThrottle = live.throttle;
+  // Fixed 120 Hz physics: the same inputs always give the same run, which is
+  // what makes replays and leaderboard checks possible. Rendering blends
+  // between the last two steps so it stays smooth at any refresh rate.
+  accumulator += dt * (replaying ? replaySpeed : 1);
+  while (accumulator >= STEP) {
+    accumulator -= STEP;
+    prevPose = session.artic.snapshot();
+    if (replaying) {
+      const wasDriving = session.state === 'driving';
+      const { input, toggles } = replaying.player.next(session.stepCount);
+      for (let i = 0; i < toggles; i++) toggleHandbrake();
+      session.step(input);
+      lastThrottle = input.throttle;
+      if (wasDriving) replaying.player.afterStep(session.stepCount, session.artic);
+    } else {
+      session.step(live);
+    }
     if (debug.enabled) debug.record(session.artic);
   }
+  renderAlpha = accumulator / STEP;
   for (const e of session.takeEvents()) handleEvent(e);
   if (session.artic.handbrakeNag) {
     toasts.show(`Handbrake on – press ${controlLabels().handbrake} to release`, theme.uiWarn, 0.6);
@@ -477,6 +652,17 @@ function drawWorld(c: CanvasRenderingContext2D): void {
 }
 
 function render(dt: number): void {
+  // Draw the rig part-way between physics steps, then put the true pose back.
+  const current = session.artic.snapshot();
+  if (prevPose && mode === 'play' && !paused) session.artic.restore(lerpPose(prevPose, current, renderAlpha));
+  try {
+    renderFrame(dt);
+  } finally {
+    session.artic.restore(current);
+  }
+}
+
+function renderFrame(dt: number): void {
   const yard = session.yard;
   const artic = session.artic;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -499,7 +685,7 @@ function render(dt: number): void {
   if (yard.conditions.rain) atmosphere.drawRain(ctx, viewW, viewH, paused ? 0 : dt);
   if (mode !== 'play') return;
 
-  const compact = touch.active;
+  const compact = touch.active || !!replaying;
   const hudBottom = drawHud(ctx, artic, viewW, viewH, compact);
   const statsBottom = drawRunStats(ctx, session, viewW);
   let guideBottom = statsBottom;
@@ -525,7 +711,7 @@ function render(dt: number): void {
   }
   toasts.draw(ctx, paused ? 0 : dt, viewW, viewH);
   debug.drawScreen(ctx, artic);
-  if (!debug.enabled && !mirrors.enabled && !touch.active && viewW > 700) drawHelp();
+  if (!debug.enabled && !mirrors.enabled && !touch.active && !replaying && viewW > 700) drawHelp();
 
   if (endBanner && !isScreenOpen()) {
     banner(ctx, viewW / 2, viewH * 0.42, endBanner.text, endBanner.colour, Math.min(64, viewW / 9));
@@ -567,7 +753,7 @@ function frame(now: number): void {
 
   const rotate = portraitPhone() && !rotateDismissed;
   rotateEl.classList.toggle('hidden', !rotate);
-  const showTouch = touch.active && mode === 'play' && !paused && !isScreenOpen() && !rotate;
+  const showTouch = touch.active && mode === 'play' && !paused && !isScreenOpen() && !rotate && !replaying;
   if (showTouch !== touchShown) {
     touch.setVisible(showTouch);
     touchShown = showTouch;
@@ -595,6 +781,14 @@ function frame(now: number): void {
 
 loadLevel(0);
 openTitle();
+
+// Leaderboard: only shown if the API is installed. ?replay=<id> (used by the
+// admin page's Watch links) plays a posted run straight away.
+void leaderboard.check().then((ok) => {
+  for (const id of ['btn-board', 'select-board']) document.getElementById(id)!.classList.toggle('hidden', !ok);
+  const m = /[?&#]replay=(\d+)/.exec(location.search + location.hash);
+  if (ok && m) void watchScore(Number(m[1]), openTitle);
+});
 // Dev-only hook for automated play-testing; stripped from production builds.
 if (import.meta.env.DEV) {
   Object.assign(window, { __game: { get session() { return session; }, openBriefing, startDriving, sound } });

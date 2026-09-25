@@ -7,6 +7,7 @@ import { DEG, MPH_TO_MS } from '../core/math.ts';
 import { Artic, type DriveInput } from '../physics/artic.ts';
 import { inflate, obbOverlap } from '../physics/sat.ts';
 import { bayProblem, checkBay, type BayCheck } from './bay.ts';
+import { ReplayRecorder, STEP, type ReplayData } from './replay.ts';
 import { buildObstacles, OBSTACLE_NAMES, type Obstacle } from './obstacles.ts';
 import type { Bay, YardLayout } from './yard.ts';
 
@@ -25,6 +26,10 @@ export interface RunResult {
   shunts: number;
   contacts: number;
   stars: number;
+  /** Physics steps the run took (the time is steps / 120). */
+  steps: number;
+  /** The recorded run (absent when this run was itself a replay). */
+  replay?: ReplayData;
 }
 
 export type SessionEvent =
@@ -52,6 +57,11 @@ export class Session {
   stateTime = 0;
   /** Metres driven in reverse this attempt (tutorial prompts use it). */
   reverseDistance = 0;
+  /** Fixed physics steps taken this attempt. */
+  stepCount = 0;
+  /** Records the run for replays; off while playing a replay back. */
+  recording = true;
+  private recorder: ReplayRecorder | null = null;
 
   private started = false;
   private hasReversed = false;
@@ -73,6 +83,8 @@ export class Session {
     this.artic.resetFromTrailerRear(s.x, s.y, s.heading * DEG, s.articulation ?? 0);
     this.artic.conditions = { forwardGrip: this.yard.conditions.forwardGrip ?? 1 };
     this.reverseDistance = 0;
+    this.stepCount = 0;
+    this.recorder = this.recording ? new ReplayRecorder(this.yard.id) : null;
     this.obstacles = buildObstacles(this.yard);
     this.state = 'driving';
     this.stateTime = 0;
@@ -102,15 +114,24 @@ export class Session {
     if (this.state !== 'driving') return;
     this.artic.handbrake = !this.artic.handbrake;
     this.handbrakeJudged = false;
+    this.recorder?.handbrake(this.stepCount);
   }
 
-  step(dt: number, input: DriveInput): void {
+  /** Advance one fixed physics step (STEP seconds). `input` must already be quantised. */
+  step(input: DriveInput): void {
+    const dt = STEP;
     this.stateTime += dt;
     if (this.state !== 'driving') {
       this.artic.step(dt, NO_INPUT);
       return;
     }
+    this.recorder?.input(this.stepCount, input);
+    this.stepCount++;
+    this.stepDriving(dt, input);
+    this.recorder?.afterStep(this.stepCount, this.artic);
+  }
 
+  private stepDriving(dt: number, input: DriveInput): void {
     const before = this.artic.snapshot();
     this.artic.step(dt, input);
     let articEvents = this.artic.takeEvents();
@@ -247,6 +268,8 @@ export class Session {
         shunts: this.shunts,
         contacts: this.contacts,
         stars,
+        steps: this.stepCount,
+        replay: this.recorder?.finish(),
       },
     });
   }

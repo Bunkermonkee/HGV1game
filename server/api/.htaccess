@@ -1,0 +1,5 @@
+# Keep settings and code files private; only index.php and admin.php are pages.
+Options -Indexes
+<FilesMatch "^(config|config\.sample|lib)\.php$">
+  Require all denied
+</FilesMatch>

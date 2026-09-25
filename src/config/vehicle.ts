@@ -94,7 +94,5 @@ export const ARTICULATION = {
   dangerAngle: 65,
 };
 
-export const SIMULATION = {
-  /** Largest physics sub-step (seconds). Frames are split into equal sub-steps. */
-  maxStep: 1 / 120,
-};
+// The physics runs at a fixed 120 steps per second (see src/game/replay.ts),
+// which makes runs exactly repeatable for replays and leaderboard checks.

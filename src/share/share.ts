@@ -14,7 +14,7 @@ function plural(n: number, word: string): string {
 }
 
 /** Short, friendly driver banter. */
-export function shareText(r: RunResult): string {
+export function shareText(r: RunResult, rank?: string): string {
   const shunts = r.shunts === 0 ? 'no shunts' : plural(r.shunts, 'shunt');
   const time = r.total < 60 ? `${Math.round(r.total)}s` : formatTime(r.total);
   const opener =
@@ -23,7 +23,8 @@ export function shareText(r: RunResult): string {
       : r.stars === 2
         ? `On the bay, job done ${starString(2)}`
         : `Got there in the end ${starString(1)}`;
-  return `${opener} – Bay ${r.bay} in ${time} with ${shunts}. Reckon you can do better? ${BRAND.shareUrl}`;
+  const onBoard = rank ? ` – ${rank} on the leaderboard` : '';
+  return `${opener} – Bay ${r.bay} in ${time} with ${shunts}${onBoard}. Reckon you can do better? ${BRAND.shareUrl}`;
 }
 
 export function shareFile(blob: Blob): File {

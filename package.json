@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node --experimental-strip-types --no-warnings scripts/build-server.ts",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "check-levels": "node --experimental-strip-types --no-warnings scripts/check-levels.ts"

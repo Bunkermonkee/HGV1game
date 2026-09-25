@@ -106,7 +106,7 @@ files.forEach((name, i) => {
       if (!m && !s.artic.handbrake) s.toggleHandbrake();
       let d = 0;
       for (let t = 0; t < 120; t += DT) {
-        s.step(DT, input);
+        s.step(input);
         d += Math.abs(s.artic.speed) * DT;
         if (s.state !== 'driving' || s.contacts > 0) {
           const ev = s.takeEvents().find((e) => e.type === 'fail' || e.type === 'contact');

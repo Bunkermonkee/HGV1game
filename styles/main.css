@@ -406,3 +406,78 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .rotate-icon { animation: none; transform: rotate(-90deg); }
 }
+
+/* ---- Leaderboard ---- */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#btn-board { align-self: stretch; }
+.lb-panel { background: var(--ui-panel); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.lb-form { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.lb-form label { font-weight: 800; }
+.lb-row { display: flex; gap: 8px; }
+.lb-row input {
+  flex: 1;
+  min-width: 0;
+  font: 600 16px var(--ui-font);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: var(--brand-dark);
+  color: var(--ui-text);
+}
+.lb-row input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.lb-row .btn { min-height: 44px; }
+.lb-status { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lb-status strong { color: var(--brand-primary); }
+.lb-links { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.linklike { background: none; border: 0; padding: 4px; color: var(--ui-text-muted); text-decoration: underline; font: 600 14px var(--ui-font); cursor: pointer; }
+.linklike:focus-visible { outline: 3px solid var(--focus-ring); }
+
+.board-panel { margin: auto; width: min(720px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.board-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.board-controls select {
+  font: 700 16px var(--ui-font);
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  flex: 1;
+  min-width: 200px;
+}
+.tabs { display: inline-flex; border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 10px; overflow: hidden; }
+.tabs button { font: 700 15px var(--ui-font); padding: 8px 14px; background: var(--ui-panel); color: var(--ui-text-muted); border: 0; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--brand-primary); color: var(--on-primary); }
+.tabs button:disabled { opacity: 0.4; cursor: default; }
+.tabs button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
+.board-note { margin: 0; color: var(--ui-text-muted); font-size: 14px; }
+.board-scroll { overflow-x: auto; background: var(--ui-bg); border-radius: 12px; }
+.board-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.board-table th, .board-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); white-space: nowrap; }
+.board-table th { font: 800 12px var(--ui-font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ui-text-muted); }
+.board-table td:nth-child(2) { white-space: normal; font-weight: 700; }
+.board-table td:nth-child(3) { color: var(--brand-primary); letter-spacing: 1px; }
+.board-table tr.you td { background: rgba(248, 95, 0, 0.16); }
+.board-table tr.gap td { text-align: center; color: var(--ui-text-muted); padding: 2px; }
+.board-table .watch { background: none; border: 2px solid rgba(255, 255, 255, 0.2); color: var(--ui-text); border-radius: 8px; padding: 4px 8px; font: 700 13px var(--ui-font); cursor: pointer; }
+.board-table .watch:focus-visible { outline: 3px solid var(--focus-ring); }
+.board-table .empty { text-align: center; color: var(--ui-text-muted); padding: 24px; white-space: normal; }
+
+/* ---- Replay ---- */
+.replay-bar {
+  position: absolute;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ui-bg);
+  border: 2px solid var(--brand-primary);
+  border-radius: 12px;
+  padding: 6px 8px 6px 12px;
+  font-weight: 700;
+  max-width: calc(100% - 24px);
+}
+.replay-tag { background: var(--brand-primary); color: var(--on-primary); font: 900 12px var(--ui-font); text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 6px; }
+#replay-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.replay-verdict { margin: 0; line-height: 1.5; max-width: 36ch; }
