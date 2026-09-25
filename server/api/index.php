@@ -50,12 +50,12 @@ function ym_valid_level(string $id): bool
     return false;
 }
 
-function ym_board_action(): never
+function ym_board_action(): void // never returns: always ends the request
 {
     $level = (string) ($_GET['level'] ?? '');
     $period = ($_GET['period'] ?? 'week') === 'all' ? 'all' : 'week';
     $player = ym_valid_player($_GET['player'] ?? null);
-    $isDaily = str_starts_with($level, 'daily-');
+    $isDaily = strncmp($level, 'daily-', 6) === 0;
     if ($level !== 'overall' && !isset(ym_levels()[$level]) && !($isDaily && preg_match('/^daily-\d{4}-\d{2}-\d{2}$/', $level))) {
         ym_json(['ok' => false, 'error' => 'unknown_level'], 400);
     }
@@ -66,7 +66,7 @@ function ym_board_action(): never
     ym_json(['ok' => true, 'level' => $level, 'period' => $isDaily ? 'day' : $period, 'week' => ym_week()] + $board);
 }
 
-function ym_replay_action(): never
+function ym_replay_action(): void // never returns: always ends the request
 {
     $id = (int) ($_GET['id'] ?? 0);
     $q = ym_db()->prepare('SELECT s.*, p.name FROM ym_scores s JOIN ym_players p ON p.player_id = s.player_id
@@ -102,7 +102,7 @@ function ym_int(array $a, string $k, int $min, int $max): int
  * Record a finished run. Keeps each player's best run per level per week.
  * Body: { playerId, name, levelId, stars, timeMs, shunts, contacts, steps, replay }
  */
-function ym_submit(): never
+function ym_submit(): void // never returns: always ends the request
 {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         ym_json(['ok' => false, 'error' => 'post_only'], 405);
@@ -184,7 +184,7 @@ function ym_submit(): never
            ->execute([$stars, $totalMs, $timeMs, $shunts, $contacts, $replayJson, $now, ym_ip_hash(), $prev['id']]);
     }
 
-    $isDaily = str_starts_with($levelId, 'daily-');
+    $isDaily = strncmp($levelId, 'daily-', 6) === 0;
     $weekBoard = ym_board($levelId, $isDaily ? null : $week, $player);
     $allBoard = $isDaily ? $weekBoard : ym_board($levelId, null, $player);
     ym_json([

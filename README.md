@@ -166,7 +166,8 @@ has its own leaderboard for the day.
 ## Leaderboard (`server/api`)
 
 A small PHP API on a MySQL database: no WordPress needed, no outside
-services. It needs PHP 8.1 or newer, which IONOS offers.
+services. It runs on PHP 7.4 or newer (checked with the PHPCompatibility
+scanner), on MySQL 5.7+/8 or MariaDB.
 
 - **Boards:** each level and the Daily Yard, **This week** (resets Monday
   00:00 UK time) and **All time**, plus an **Overall** board for drivers who
@@ -201,8 +202,9 @@ leaderboard and everything else works as normal.
 1. In IONOS go to **Hosting → Databases** and create a **MySQL** database
    (MySQL 8). Note the host name (like `db5000000000.hosting-data.io`), the
    database name, the user and the password.
-2. Make sure the site runs **PHP 8.1 or newer** (IONOS: Hosting → PHP
-   version).
+2. PHP 7.4 or newer works. PHP 7.4 is out of security support, though, so
+   switching to PHP 8.2 or newer (IONOS: Hosting → PHP version) is a good
+   idea for the whole site.
 3. Upload the game folder as usual. It now contains `api/`.
 4. On the server, copy `api/config.sample.php` to **`api/config.php`** and
    fill in the database details, an admin password and some random text for

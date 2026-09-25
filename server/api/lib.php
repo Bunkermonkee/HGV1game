@@ -1,5 +1,8 @@
 <?php
-/* Shared code for the Yard Master leaderboard API and admin page. */
+/*
+ * Shared code for the Yard Master leaderboard API and admin page.
+ * Written to run on PHP 7.4 and every PHP 8.x version.
+ */
 
 declare(strict_types=1);
 
@@ -83,7 +86,7 @@ function ym_schema(PDO $db): void
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
 
-function ym_json(array $data, int $code = 200): never
+function ym_json(array $data, int $code = 200): void // never returns: always ends the request
 {
     http_response_code($code);
     header('Content-Type: application/json; charset=utf-8');
@@ -153,7 +156,7 @@ function ym_levels(): array
 /** Tidy a display name; returns null if it isn't acceptable. */
 function ym_clean_name(string $name): ?string
 {
-    $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+    $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '', " \t\n\r\0\x0B");
     if (!preg_match("/^[\\p{L}\\p{N} '.&!\\-]{2,40}$/u", $name)) {
         return null;
     }
@@ -169,7 +172,7 @@ function ym_clean_name(string $name): ?string
     foreach (['fuck', 'fuk', 'fck', 'fcuk', 'phuck', 'shit', 'cunt', 'kunt', 'wank', 'twat', 'tosser', 'bollock', 'bastard',
               'knobhead', 'dickhead', 'bellend', 'pussy', 'whore', 'slut', 'nigg', 'paki', 'faggot', 'spastic', 'retard', 'nonce',
               'rapist', 'hitler', 'nazi'] as $bad) {
-        if (str_contains($flat, $bad)) {
+        if (strpos($flat, $bad) !== false) {
             return null;
         }
     }
