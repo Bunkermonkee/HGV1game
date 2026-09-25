@@ -15,7 +15,7 @@
     { "kind": "cone", "x": 60, "y": 40 }
   ],
   "conditions": { "night": true },
-  "spawn": { "x": 23.32, "y": 37.68, "heading": 182.2, "articulation": 6.4 },
+  "spawn": { "x": 23.32, "y": 37.73, "heading": 181.9, "articulation": 6.4 },
   "stars": { "three": { "shunts": 0, "time": 60 }, "two": { "shunts": 2, "time": 110 } },
   "driveOut": [
     { "throttle": 1, "steer": 0, "dist": 8 },

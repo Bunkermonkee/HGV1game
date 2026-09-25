@@ -12,7 +12,7 @@
     { "kind": "trailer-in-bay", "bay": "6", "colour": "#6b6f76" },
     { "kind": "trailer-in-bay", "bay": "9", "colour": "#3c6b44" }
   ],
-  "spawn": { "x": 40.87, "y": 37.7, "heading": 356.4, "articulation": -5 },
+  "spawn": { "x": 40.87, "y": 37.76, "heading": 356.6, "articulation": -4.9 },
   "stars": { "three": { "shunts": 0, "time": 60 }, "two": { "shunts": 2, "time": 110 } },
   "driveOut": [
     { "throttle": 1, "steer": 0, "dist": 8 },

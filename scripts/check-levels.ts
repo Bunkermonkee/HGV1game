@@ -15,15 +15,12 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ARTICULATION } from '../src/config/vehicle.ts';
-import { DEG } from '../src/core/math.ts';
 import { Session } from '../src/game/session.ts';
-import { BUFFER } from '../src/game/yard.ts';
 import { parseLevel, type LevelFile } from '../src/levels/parse.ts';
-import { obbOverlap } from '../src/physics/sat.ts';
+import { parkOnBay, rigOverlaps, runDriveOut } from '../src/levels/proof.ts';
 
 const DIR = join(import.meta.dirname, '../src/levels');
 const WRITE = process.argv.includes('--write');
-const DT = 1 / 120;
 const POS_TOL = 0.3;
 const ANGLE_TOL = 2;
 
@@ -49,15 +46,6 @@ function pretty(v: unknown, indent = ''): string {
   return `{\n${entries.join(',\n')}\n${indent}}`;
 }
 
-function overlapsAnything(s: Session): string | null {
-  const t = s.artic.tractorBox;
-  const r = s.artic.trailerBox;
-  for (const o of s.obstacles) {
-    if (obbOverlap(t, o.box) || obbOverlap(r, o.box)) return o.kind;
-  }
-  return null;
-}
-
 let failures = 0;
 const files = readdirSync(DIR)
   .filter((f) => f.endsWith('.json'))
@@ -78,59 +66,22 @@ files.forEach((name, i) => {
   }
 
   const s = new Session(yard);
-  const hitAtSpawn = overlapsAnything(s);
+  const hitAtSpawn = rigOverlaps(s);
   if (hitAtSpawn) problems.push(`spawn overlaps a ${hitAtSpawn}`);
-
-  // Parked on the target bay, against the buffers.
-  const bay = s.bay;
-  const a = bay.heading * DEG;
-  const gap = (bay.buffers ? BUFFER.depth : 0) + 0.05;
-  s.artic.resetFromTrailerRear(bay.x + Math.cos(a) * gap, bay.y + Math.sin(a) * gap, a, 0);
-  const hitParked = overlapsAnything(s);
-  if (hitParked) problems.push(`parked position on bay ${bay.label} overlaps a ${hitParked}`);
+  parkOnBay(s);
+  const hitParked = rigOverlaps(s);
+  if (hitParked) problems.push(`parked position on bay ${s.bay.label} overlaps a ${hitParked}`);
 
   if (file.driveOut?.length && !hitParked) {
-    let pathLength = 0;
-    let ok = true;
-    // The player drives the route backwards with forward/reverse swapped:
-    // a shunt is each forward leg after their first reversing leg.
-    const playerLegs = [...file.driveOut].reverse().map((m) => -m.throttle);
-    const firstReverse = playerLegs.indexOf(-1);
-    const shunts = playerLegs.filter((t, k) => t === 1 && k > firstReverse && playerLegs[k - 1] !== 1).length;
-    const moves = [...file.driveOut, null];
-    for (const m of moves) {
-      const input = m
-        ? { steerMode: 'absolute' as const, steer: m.steer, throttle: m.throttle }
-        : { steerMode: 'absolute' as const, steer: file.driveOut[file.driveOut.length - 1].steer, throttle: 0 };
-      // Finish with the handbrake so the rig stops within a couple of metres.
-      if (!m && !s.artic.handbrake) s.toggleHandbrake();
-      let d = 0;
-      for (let t = 0; t < 120; t += DT) {
-        s.step(input);
-        d += Math.abs(s.artic.speed) * DT;
-        if (s.state !== 'driving' || s.contacts > 0) {
-          const ev = s.takeEvents().find((e) => e.type === 'fail' || e.type === 'contact');
-          problems.push(`drive-out hit trouble: ${JSON.stringify(ev)}`);
-          ok = false;
-          break;
-        }
-        if (m ? d >= m.dist : s.artic.stopped) break;
-      }
-      pathLength += d;
-      if (!ok) break;
-    }
-    if (ok) {
-      const r = s.artic.trailerRear;
-      const end = {
-        x: +r.x.toFixed(2),
-        y: +r.y.toFixed(2),
-        heading: +((s.artic.trailerHeading / DEG + 360) % 360).toFixed(1),
-        articulation: +(s.artic.articulation / DEG).toFixed(1),
-      };
+    const proof = runDriveOut(yard, file.driveOut);
+    if (!proof.ok) {
+      problems.push(proof.problem ?? 'drive-out failed');
+    } else {
+      const end = proof.end;
       const sp = file.spawn;
       const dPos = Math.hypot(end.x - sp.x, end.y - sp.y);
       const dHead = Math.abs(((end.heading - sp.heading + 540) % 360) - 180);
-      const dArt = Math.abs(end.articulation - (sp.articulation ?? 0));
+      const dArt = Math.abs((end.articulation ?? 0) - (sp.articulation ?? 0));
       if (WRITE) {
         file.spawn = end;
         writeFileSync(path, pretty(file) + '\n');
@@ -138,11 +89,11 @@ files.forEach((name, i) => {
       } else if (dPos > POS_TOL || dHead > ANGLE_TOL || dArt > ANGLE_TOL) {
         problems.push(`drive-out ends at ${JSON.stringify(end)}, not the spawn`);
       }
-      if (Math.abs(end.articulation) > ARTICULATION.warnAngle) notes.push('spawn articulation is large');
+      if (Math.abs(end.articulation ?? 0) > ARTICULATION.warnAngle) notes.push('spawn articulation is large');
       // Reversing is slower than the drive-out and needs corrections: rough guide only.
-      const est = pathLength / 1.2 + 6 * (shunts + 1);
+      const est = proof.pathLength / 1.2 + 6 * (proof.shunts + 1);
       notes.push(
-        `route ${pathLength.toFixed(0)} m, ${shunts} shunt(s); rough 3★ time ≈ ${Math.ceil(est / 5) * 5}s` +
+        `route ${proof.pathLength.toFixed(0)} m, ${proof.shunts} shunt(s); rough 3★ time ≈ ${Math.ceil(est / 5) * 5}s` +
           ` (level says ${file.stars.three.time}s / ${file.stars.three.shunts} shunts)`,
       );
     }
@@ -155,6 +106,25 @@ files.forEach((name, i) => {
   for (const p of problems) console.log(`    problem: ${p}`);
   for (const n of notes) console.log(`    ${n}`);
 });
+
+
+// ---- Daily Yard: make sure the generator copes with the coming year ---------------
+{
+  const { generateDaily } = await import('../src/levels/daily.ts');
+  const start = Date.now();
+  let bad = 0;
+  for (let i = 0; i < 366; i++) {
+    const date = new Date(Date.now() + i * 86400000).toISOString().slice(0, 10);
+    try {
+      generateDaily(date);
+    } catch {
+      bad++;
+      console.log(`✗ Daily Yard for ${date} could not be generated`);
+    }
+  }
+  console.log(`${bad ? '✗' : '✓'} Daily Yard: next 366 days generated (${((Date.now() - start) / 366).toFixed(0)} ms per day)`);
+  if (bad) process.exit(1);
+}
 
 if (failures) {
   console.log(`\n${failures} level(s) with problems`);

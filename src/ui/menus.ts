@@ -13,6 +13,7 @@ const grid = $('level-grid');
 export interface MenuCallbacks {
   onPlay: () => void;
   onPickLevel: (index: number) => void;
+  onPickDaily: () => void;
   onStart: () => void;
   onBackToTitle: () => void;
   onLevelSelect: () => void;
@@ -22,6 +23,7 @@ export interface MenuCallbacks {
 
 export function initMenus(cb: MenuCallbacks): void {
   $('btn-play').addEventListener('click', cb.onPlay);
+  $('btn-daily').addEventListener('click', cb.onPickDaily);
   $('btn-select-back').addEventListener('click', cb.onBackToTitle);
   $('btn-start').addEventListener('click', cb.onStart);
   $('btn-brief-levels').addEventListener('click', cb.onLevelSelect);
@@ -32,7 +34,9 @@ export function initMenus(cb: MenuCallbacks): void {
   $('pause-sound').addEventListener('click', cb.onToggleSound);
   grid.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-index]');
-    if (btn && !btn.disabled) cb.onPickLevel(Number(btn.dataset.index));
+    const daily = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-daily]');
+    if (daily) cb.onPickDaily();
+    else if (btn && !btn.disabled) cb.onPickLevel(Number(btn.dataset.index));
   });
 }
 
@@ -102,10 +106,24 @@ export function showTitle(): void {
   $('btn-play').focus();
 }
 
-export function showLevelSelect(levels: YardLayout[], save: SaveData, focusIndex = 0): void {
+/** Title-screen Daily Yard button text, e.g. "Daily Yard · Thu 25 Sep". */
+export function setDailyLabel(text: string): void {
+  $('btn-daily').textContent = text;
+}
+
+export function showLevelSelect(levels: YardLayout[], save: SaveData, focusIndex = 0, daily?: YardLayout): void {
   hideMenus();
   let total = 0;
-  grid.innerHTML = levels
+  const dailyCard = daily
+    ? `<li class="daily-card"><button class="level-btn daily" type="button" data-daily="1"
+          aria-label="Daily Yard, ${daily.name.replace('Daily Yard – ', '')}, ${save.levels[daily.id]?.stars ?? 0} of 3 stars">
+        <span class="num">Today<span aria-hidden="true">📅</span></span>
+        <span class="name">${daily.name}</span>
+        <span class="stars" aria-hidden="true">${starsMarkup(save.levels[daily.id]?.stars ?? 0)}</span>
+        <ul class="tags"><li class="tag">New every day</li>${tagsFor(daily).map((t) => `<li class="tag">${t}</li>`).join('')}</ul>
+      </button></li>`
+    : '';
+  grid.innerHTML = dailyCard + levels
     .map((l, i) => {
       const rec = save.levels[l.id];
       const stars = rec?.stars ?? 0;
@@ -125,8 +143,8 @@ export function showLevelSelect(levels: YardLayout[], save: SaveData, focusIndex
     .join('');
   $('select-stars').textContent = `★ ${total} / ${levels.length * 3}`;
   selectEl.classList.remove('hidden');
-  const btns = grid.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
-  (btns[Math.min(focusIndex, btns.length - 1)] ?? $('btn-select-back')).focus();
+  const focus = grid.querySelector<HTMLButtonElement>(`button[data-index="${focusIndex}"]:not(:disabled)`);
+  (focus ?? grid.querySelector<HTMLButtonElement>('button:not(:disabled)') ?? $('btn-select-back')).focus();
 }
 
 function targetText(t: { shunts: number; time: number }): string {
@@ -136,7 +154,7 @@ function targetText(t: { shunts: number; time: number }): string {
 
 export function showBriefing(level: YardLayout): void {
   hideMenus();
-  $('brief-number').textContent = `Level ${level.number}`;
+  $('brief-number').textContent = level.number ? `Level ${level.number}` : 'Daily Yard – same yard for everyone today';
   $('brief-name').textContent = level.name;
   $('brief-text').textContent = level.brief;
   $('brief-tags').innerHTML = tagsFor(level)

@@ -3,9 +3,10 @@
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
 TypeScript, built with Vite into one static folder. No backend, no CDNs.
 
-> **Status: version 1 complete.** 10 levels, night/rain, Pro-view mirrors,
-> touch and gamepad controls, synthesised sound, share card. See
-> [Deploying](#deploying) and [Version 2 ideas](#version-2-ideas). The full
+> **Status: version 1.1.** 10 levels, a Daily Yard, night/rain, Pro-view
+> mirrors, touch and gamepad controls, synthesised sound, share card, and an
+> online leaderboard with verified replays. See [Deploying](#deploying),
+> [Leaderboard](#leaderboard-serverapi) and [Version 2 ideas](#version-2-ideas). The full
 > deploy/WordPress guide will be added at the end.
 
 ## Run it
@@ -145,6 +146,84 @@ route length and shunts as a guide for star targets. (Needs Node 22.6+.)
 - **Camera:** it frames the rig and the target bay together when they fit,
   otherwise follows the rig and leans towards the bay.
 
+## Daily Yard (`src/levels/daily.ts`)
+
+A new yard every day, changing at UK midnight, and the same for everyone. It
+has its own leaderboard for the day.
+
+- The date seeds a generator that picks:
+  - the day's yard type: straight back, 90° sight side, 90° blind side, 45°
+    sawtooth, or a tight yard needing shunts;
+  - the target bay and parked trailers;
+  - sometimes a cone line;
+  - about one day in seven at night, and one in seven in the rain.
+- Every candidate layout must pass the same drive-out proof as the 10
+  levels, with at least 0.25 m to spare. The spawn and star targets come from
+  that proof, so every day is solvable.
+- `npm run check-levels` also generates the next 366 days to make sure the
+  generator never gets stuck.
+
+## Leaderboard (`server/api`)
+
+A small PHP API on a MySQL database: no WordPress needed, no outside
+services. It needs PHP 8.1 or newer, which IONOS offers.
+
+- **Boards:** each level and the Daily Yard, **This week** (resets Monday
+  00:00 UK time) and **All time**, plus an **Overall** board for drivers who
+  have finished all 10 yards. Ranking: stars, then total time with penalties,
+  then fewest shunts. One entry per driver per board, their best.
+- **Players:** a display name only, chosen the first time they post; after
+  that runs post automatically. The game stores a random player id in the
+  browser. No email, no accounts, no tracking cookies.
+- **Checks on every score:**
+  - it can't be faster than physically possible for the level;
+  - the time has to fit the recorded run length;
+  - stars are worked out by the server;
+  - the replay has to be present and well-formed;
+  - posting is rate-limited per (anonymised) IP address;
+  - names are filtered for bad language, without blocking surnames like
+    Hancock.
+- **Replays:** the physics runs at a fixed 120 steps a second, so a run is
+  exactly repeatable from its inputs. Every posted best keeps its recording (a
+  few KB). **▶ Watch** on the leaderboard plays it back and says whether it
+  matches the posted score.
+- **Admin page** (`api/admin.php`, password in `config.php`):
+  - browse scores by week and level;
+  - hide or delete a score, ban or rename a player;
+  - watch any run;
+  - download the week's top 3 on every board as a CSV.
+
+If the API isn't installed or can't reach its database, the game hides the
+leaderboard and everything else works as normal.
+
+### Setting it up on IONOS
+
+1. In IONOS go to **Hosting → Databases** and create a **MySQL** database
+   (MySQL 8). Note the host name (like `db5000000000.hosting-data.io`), the
+   database name, the user and the password.
+2. Make sure the site runs **PHP 8.1 or newer** (IONOS: Hosting → PHP
+   version).
+3. Upload the game folder as usual. It now contains `api/`.
+4. On the server, copy `api/config.sample.php` to **`api/config.php`** and
+   fill in the database details, an admin password and some random text for
+   `secret`.
+5. Visit `…/yardmaster/api/index.php?action=ping`. You should see
+   `{"ok":true,…}`. The tables are created automatically on first use.
+6. Log in to `…/yardmaster/api/admin.php` with your admin password.
+
+`config.php` is never included in the build and never overwritten by an
+update. The `.htaccess` in `api/` stops it being read from the web.
+
+### Local testing
+
+```bash
+npm run build
+cp server/api/config.sample.php dist/api/config.php   # then edit for a local MySQL
+php -S 127.0.0.1:8098 -t dist                          # game + API
+# or, for development with hot reload:
+VITE_API_BASE=/api/index.php npm run dev               # proxies /api to :8098
+```
+
 ## Audio (`src/audio/sound.ts`)
 
 All sound is synthesised with the Web Audio API, so there are no audio files
@@ -270,6 +349,13 @@ src/config/brand.ts   station name, share URL, logo
 src/share/            share card image, share/download/copy
 src/ui/screens.ts     results (delivery note) and fail screens
 src/ui/menus.ts       title, level select, briefing
+src/ui/board.ts       leaderboard screen
+src/net/leaderboard.ts  leaderboard API client
+src/game/replay.ts    fixed-step recording and playback
+src/levels/daily.ts   Daily Yard generator
+src/levels/proof.ts   drive-out solvability proof (levels + Daily Yard)
+server/api/           PHP leaderboard API + admin page (copied to dist/api)
+scripts/build-server.ts  copies the API into the build, writes levels.json
 ```
 
 ## Deploying
@@ -327,11 +413,11 @@ editor) and paste:
 
 ## Version 2 ideas
 
+Done in 1.1: weekly/all-time leaderboards with verified replays, the Daily
+Yard, and deterministic physics.
+
 Station and community:
 
-- Weekly leaderboards (needs a small backend, e.g. a serverless function +
-  key-value store), with on-air shout-outs for the winners.
-- A daily yard: one generated layout per day, the same for everyone.
 - Challenge links: `#level-7-beat-38s` sets up a rival time to beat.
 - Haulier leagues, where drivers enter a company name.
 - An in-cab radio button that plays the station's live stream inside the
@@ -357,8 +443,7 @@ Gameplay:
 
 Technical:
 
-- Fixed-timestep, deterministic physics, so replays, ghosts and
-  server-checked leaderboard scores are possible.
+- A ghost of your best run to race against (replays make this easy now).
 - Cache the static yard in an off-screen layer (helps low-end phones,
   especially with mirrors on).
 - Automated tests (physics, bay check, scoring) and a browser smoke test in

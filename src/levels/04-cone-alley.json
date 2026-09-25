@@ -26,7 +26,7 @@
     { "kind": "cone", "x": 62, "y": 37 }
   ],
   "markings": [{ "kind": "hatch", "x": 8, "y": 38, "w": 56, "h": 5 }],
-  "spawn": { "x": 28.71, "y": 28.11, "heading": 192.9, "articulation": 7.6 },
+  "spawn": { "x": 28.71, "y": 28.1, "heading": 192.9, "articulation": 7.6 },
   "stars": { "three": { "shunts": 0, "time": 55 }, "two": { "shunts": 2, "time": 100 } },
   "driveOut": [
     { "throttle": 1, "steer": 0, "dist": 3 },

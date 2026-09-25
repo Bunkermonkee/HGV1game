@@ -12,7 +12,7 @@
     { "kind": "trailer-in-bay", "bay": "1", "colour": "#3c6b44" }
   ],
   "markings": [{ "kind": "text", "x": 8, "y": 24, "text": "NO PARKING", "size": 1.4 }],
-  "spawn": { "x": 28.05, "y": 23.12, "heading": 179.2, "articulation": 7.8 },
+  "spawn": { "x": 28.05, "y": 23.12, "heading": 179.3, "articulation": 7.8 },
   "stars": { "three": { "shunts": 2, "time": 90 }, "two": { "shunts": 4, "time": 160 } },
   "driveOut": [
     { "throttle": 1, "steer": 1, "dist": 5 },

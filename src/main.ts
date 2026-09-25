@@ -16,6 +16,7 @@ import { loadSave, recordResult, saveSettings } from './game/storage.ts';
 import type { YardLayout } from './game/yard.ts';
 import { errorText, leaderboard, type StoredReplay } from './net/leaderboard.ts';
 import { Tutorial } from './game/tutorial.ts';
+import { dailyId, dailyLabel, generateDaily, isDailyId, ukDate } from './levels/daily.ts';
 import { LEVELS } from './levels/index.ts';
 import { obbCorners } from './physics/geometry.ts';
 import { Atmosphere, needsLightmap } from './render/atmosphere.ts';
@@ -30,6 +31,7 @@ import {
   hideMenus,
   initMenus,
   setControlsNote,
+  setDailyLabel,
   setProViewLabel,
   setSoundLabel,
   showBriefing,
@@ -175,9 +177,26 @@ function loadLayout(level: YardLayout): void {
   resetRun();
 }
 
-/** Find a level by id (campaign levels; Daily Yards are generated). */
+/** Find a level by id (campaign levels; Daily Yards are generated from their date). */
 function levelById(id: string): YardLayout | null {
+  if (isDailyId(id)) {
+    try {
+      return generateDaily(id.slice('daily-'.length));
+    } catch {
+      return null;
+    }
+  }
   return LEVELS.find((l) => l.id === id) ?? null;
+}
+
+function openDaily(): void {
+  const level = generateDaily(ukDate());
+  levelIndex = -1;
+  loadLayout(level);
+  mode = 'briefing';
+  setPaused(false);
+  hideScreens();
+  showBriefing(level);
 }
 
 /** Put the truck back at the start of the current level. */
@@ -196,6 +215,7 @@ function resetRun(): void {
 }
 
 function openTitle(): void {
+  setDailyLabel(`Daily Yard · ${dailyLabel(ukDate())}`);
   mode = 'menu';
   setPaused(false);
   hideScreens();
@@ -224,7 +244,7 @@ function openLevelSelect(): void {
   hideScreens();
   const save = loadSave();
   if (unlockAllRequested()) save.unlocked = LEVELS.length;
-  showLevelSelect(LEVELS, save, levelIndex);
+  showLevelSelect(LEVELS, save, levelIndex, generateDaily(ukDate()));
 }
 
 // Typing #unlock-all into the address bar doesn't reload the page, so
@@ -313,10 +333,10 @@ function handleEvent(e: SessionEvent): void {
         pendingScreen = showReplayEnd;
         break;
       }
-      const level = LEVELS[levelIndex];
+      const level = session.yard;
       const newBest = recordResult(r.levelId, level.number, r.stars, r.total, r.shunts);
       const best = loadSave().levels[r.levelId];
-      const hasNext = levelIndex + 1 < LEVELS.length;
+      const hasNext = !isDailyId(level.id) && levelIndex + 1 < LEVELS.length;
       endBanner = { text: 'DELIVERED', colour: theme.uiGood };
       sound.chime();
       pendingScreen = () => void showResults(r, session, best, newBest, hasNext);
@@ -328,7 +348,11 @@ function handleEvent(e: SessionEvent): void {
 // ---- Leaderboard and replays ------------------------------------------------------
 
 function boardChoices(): BoardChoice[] {
-  return [{ id: 'overall', name: 'Overall – all 10 yards' }, ...LEVELS.map((l) => ({ id: l.id, name: `${l.number}. ${l.name}` }))];
+  return [
+    { id: 'overall', name: 'Overall – all 10 yards' },
+    { id: dailyId(), name: `Daily Yard – today (${dailyLabel(ukDate())})` },
+    ...LEVELS.map((l) => ({ id: l.id, name: `${l.number}. ${l.name}` })),
+  ];
 }
 
 /** Open the leaderboard; `back` is where its Back button goes. */
@@ -436,6 +460,7 @@ initScreens({
 initMenus({
   onPlay: openLevelSelect,
   onPickLevel: openBriefing,
+  onPickDaily: openDaily,
   onStart: startDriving,
   onBackToTitle: openTitle,
   onLevelSelect: openLevelSelect,
@@ -620,6 +645,10 @@ function update(dt: number): void {
       session.step(input);
       lastThrottle = input.throttle;
       if (wasDriving) replaying.player.afterStep(session.stepCount, session.artic);
+      // A recording that doesn't finish where it says it does: stop and report it.
+      if (session.state === 'driving' && !pendingScreen && session.stepCount >= replaying.player.data.steps + 60) {
+        pendingScreen = showReplayEnd;
+      }
     } else {
       session.step(live);
     }

@@ -16,7 +16,7 @@
     { "kind": "trailer", "x": 6, "y": 47, "heading": 0, "colour": "#7a5c2f" },
     { "kind": "bollard", "x": 76, "y": 12 }
   ],
-  "spawn": { "x": 55.11, "y": 38.63, "heading": 79, "articulation": 4.2 },
+  "spawn": { "x": 55.12, "y": 38.63, "heading": 79, "articulation": 4.2 },
   "stars": { "three": { "shunts": 0, "time": 60 }, "two": { "shunts": 2, "time": 110 } },
   "driveOut": [
     { "throttle": 1, "steer": 0, "dist": 12 },

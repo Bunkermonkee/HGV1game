@@ -14,7 +14,7 @@
     { "kind": "kerb", "x": 70, "y": 44, "length": 14, "width": 4 }
   ],
   "conditions": { "rain": true, "forwardGrip": 0.7, "visibility": 30 },
-  "spawn": { "x": 41.43, "y": 37.57, "heading": 356.8, "articulation": -5.9 },
+  "spawn": { "x": 41.42, "y": 37.62, "heading": 357.1, "articulation": -5.9 },
   "stars": { "three": { "shunts": 0, "time": 65 }, "two": { "shunts": 2, "time": 120 } },
   "driveOut": [
     { "throttle": 1, "steer": 0, "dist": 8 },

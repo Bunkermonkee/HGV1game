@@ -481,3 +481,23 @@ html, body {
 .replay-tag { background: var(--brand-primary); color: var(--on-primary); font: 900 12px var(--ui-font); text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 6px; }
 #replay-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .replay-verdict { margin: 0; line-height: 1.5; max-width: 36ch; }
+
+/* ---- Daily Yard ---- */
+.btn.daily { border-color: var(--brand-primary); color: var(--ui-text); font-size: 19px; min-height: 52px; }
+.level-grid .daily-card { grid-column: 1 / -1; }
+.level-btn.daily {
+  min-height: 0;
+  border-color: var(--brand-primary);
+  background: linear-gradient(90deg, rgba(248, 95, 0, 0.22), rgba(248, 95, 0, 0.04)), var(--ui-panel);
+}
+/* Short landscape phones: keep the title screen on one screen. */
+@media (max-height: 440px) {
+  .logo-slot.on-dark.has-logo { height: auto; }
+  .logo-slot.on-dark.has-logo img { height: 40px; }
+  .title-card { gap: 6px; }
+  .title-card .hazard { margin-bottom: 4px; }
+  .game-title { font-size: 30px; }
+  .tagline, .controls-note { display: none; }
+  .title-card .btn { min-height: 44px; font-size: 16px; padding: 6px 12px; }
+  .title-card .btn.big { min-height: 48px; font-size: 18px; }
+}
