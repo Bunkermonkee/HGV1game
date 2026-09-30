@@ -85,6 +85,7 @@ function ym_replay_action(): void // never returns: always ends the request
         'timeMs' => (int) $r['time_ms'],
         'shunts' => (int) $r['shunts'],
         'contacts' => (int) $r['contacts'],
+        'fp' => (int) $r['fp'] === 1,
         'replay' => json_decode($r['replay'], true),
     ]);
 }
@@ -174,14 +175,16 @@ function ym_submit(): void // never returns: always ends the request
         || ($stars === (int) $prev['stars'] && ($totalMs < (int) $prev['total_ms']
             || ($totalMs === (int) $prev['total_ms'] && $shunts < (int) $prev['shunts'])));
     $replayJson = json_encode($replay, JSON_UNESCAPED_SLASHES);
+    // Driven in first person? The game tags the replay; the board shows an (FP) badge.
+    $fp = ($replay['view'] ?? null) === 'fpv' ? 1 : 0;
     if (!$prev) {
-        $db->prepare('INSERT INTO ym_scores (player_id, level_id, week, stars, total_ms, time_ms, shunts, contacts, replay, created_at, ip_hash)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-           ->execute([$player, $levelId, $week, $stars, $totalMs, $timeMs, $shunts, $contacts, $replayJson, $now, ym_ip_hash()]);
+        $db->prepare('INSERT INTO ym_scores (player_id, level_id, week, stars, total_ms, time_ms, shunts, contacts, replay, fp, created_at, ip_hash)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+           ->execute([$player, $levelId, $week, $stars, $totalMs, $timeMs, $shunts, $contacts, $replayJson, $fp, $now, ym_ip_hash()]);
     } elseif ($better) {
-        $db->prepare('UPDATE ym_scores SET stars = ?, total_ms = ?, time_ms = ?, shunts = ?, contacts = ?, replay = ?, created_at = ?, ip_hash = ?
+        $db->prepare('UPDATE ym_scores SET stars = ?, total_ms = ?, time_ms = ?, shunts = ?, contacts = ?, replay = ?, fp = ?, created_at = ?, ip_hash = ?
                       WHERE id = ?')
-           ->execute([$stars, $totalMs, $timeMs, $shunts, $contacts, $replayJson, $now, ym_ip_hash(), $prev['id']]);
+           ->execute([$stars, $totalMs, $timeMs, $shunts, $contacts, $replayJson, $fp, $now, ym_ip_hash(), $prev['id']]);
     }
 
     $isDaily = strncmp($levelId, 'daily-', 6) === 0;

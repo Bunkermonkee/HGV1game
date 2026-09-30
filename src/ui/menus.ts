@@ -83,7 +83,7 @@ export function showViewPick(current: View, fpvSupported: boolean): void {
 
 export function setViewLabel(view: View, fpvSupported: boolean): void {
   const b = $<HTMLButtonElement>('pause-view');
-  b.textContent = view === 'fpv' ? 'Switch to overhead view' : 'Switch to first person';
+  b.textContent = view === 'fpv' ? 'Overhead view (restarts)' : 'First person (restarts)';
   b.classList.toggle('hidden', !fpvSupported);
 }
 

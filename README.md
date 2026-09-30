@@ -139,8 +139,17 @@ route length and shunts as a guide for star targets. (Needs Node 22.6+.)
 ## First person view (`src/render3d/`)
 
 After **Play** (or **Daily Yard**) the player picks **Overhead View** or
-**First Person**. The choice is remembered, and can be switched in the
-pause menu or with **C**.
+**First Person**. The choice is remembered.
+
+- **One view per run:** switching mid-level (pause menu) restarts the run,
+  so nobody can line up overhead and switch to first person just before the
+  handbrake. **C** switches freely on the briefing card and before the truck
+  has moved; after that it tells you to use the pause menu.
+- **Leaderboard badge:** runs driven in first person show **(FP)** next to
+  the name (and in the replay bar and the admin page). On the overall board
+  it shows only if every yard was driven in first person. The game tags the
+  run's replay with `view: "fpv"`; the server stores it in `ym_scores.fp`,
+  a column it adds by itself to an existing table the first time it runs.
 
 - **Driver's seat:** right-hand drive, eye about 2.5 m up, 0.55 m right of
   the cab's centre line. You see the dashboard, pillars and door tops, and a
@@ -162,8 +171,7 @@ pause menu or with **C**.
   `visibility`.
 - **How:** a small WebGL 2 renderer written for the game (`gl.ts`, about
   300 lines, no libraries). The physics, scoring and replays are exactly the
-  same in both views. Replays always play back overhead; runs driven in
-  first person are tagged `view: "fpv"` in their replay data.
+  same in both views. Replays always play back overhead.
 - **Support:** needs WebGL 2 (all current browsers). Where it isn't
   available, the First Person button is greyed out with a note.
 

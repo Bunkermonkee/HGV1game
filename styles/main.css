@@ -530,3 +530,6 @@ html, body {
 .view-name { font: 900 20px var(--ui-font-display); text-transform: uppercase; color: var(--brand-secondary); }
 .view-desc { font-size: 15px; line-height: 1.35; color: var(--ui-text-muted); }
 .view-note { margin: 0; font-size: 14px; color: var(--ui-warn); }
+
+/* First-person badge on the leaderboard. */
+.fp-badge { font: 800 12px var(--ui-font); color: var(--brand-secondary); letter-spacing: 0.04em; white-space: nowrap; }

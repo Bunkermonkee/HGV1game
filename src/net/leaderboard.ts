@@ -18,6 +18,8 @@ export interface BoardEntry {
   totalMs: number;
   shunts: number;
   contacts: number;
+  /** Driven in the first-person view (overall board: every yard was). */
+  fp?: boolean;
   /** Score id, for watching the replay (0 on the overall board). */
   id: number;
   you: boolean;
@@ -58,6 +60,7 @@ export interface StoredReplay {
   timeMs: number;
   shunts: number;
   contacts: number;
+  fp?: boolean;
   replay: ReplayData;
 }
 

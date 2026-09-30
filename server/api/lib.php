@@ -71,12 +71,17 @@ function ym_schema(PDO $db): void
         shunts SMALLINT NOT NULL,
         contacts SMALLINT NOT NULL,
         replay MEDIUMTEXT NOT NULL,
+        fp TINYINT(1) NOT NULL DEFAULT 0,
         hidden TINYINT(1) NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL,
         ip_hash CHAR(64) NOT NULL,
         UNIQUE KEY one_per_week (player_id, level_id, week),
         KEY board (level_id, week, hidden)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Added later: runs driven in the first-person view (older tables get the column here).
+    if (!$db->query("SHOW COLUMNS FROM ym_scores LIKE 'fp'")->fetch()) {
+        $db->exec('ALTER TABLE ym_scores ADD COLUMN fp TINYINT(1) NOT NULL DEFAULT 0 AFTER replay');
+    }
     $db->exec("CREATE TABLE IF NOT EXISTS ym_rate (
         ip_hash CHAR(64) NOT NULL,
         action VARCHAR(16) NOT NULL,
@@ -227,7 +232,7 @@ function ym_best_rows(array $levels, ?string $week): array
     if ($week !== null) {
         $params[] = $week;
     }
-    $sql = 'SELECT s.id, s.player_id, s.level_id, s.stars, s.total_ms, s.shunts, s.contacts, s.created_at, p.name
+    $sql = 'SELECT s.id, s.player_id, s.level_id, s.stars, s.total_ms, s.shunts, s.contacts, s.fp, s.created_at, p.name
             FROM ym_scores s
             JOIN (SELECT player_id, level_id, MIN(' . ym_key() . ") AS k
                   FROM ym_scores WHERE level_id IN ($in) AND hidden = 0$weekSql
@@ -264,16 +269,22 @@ function ym_board(string $level, ?string $week, ?string $playerId): array
         foreach (ym_best_rows($ids, $week) as $r) {
             $p = &$players[$r['player_id']];
             $p ??= ['player_id' => $r['player_id'], 'name' => $r['name'], 'stars' => 0, 'total_ms' => 0, 'shunts' => 0,
-                    'contacts' => 0, 'created_at' => '', 'id' => 0, 'n' => 0];
+                    'contacts' => 0, 'created_at' => '', 'id' => 0, 'n' => 0, 'fp' => 0];
             $p['stars'] += (int) $r['stars'];
             $p['total_ms'] += (int) $r['total_ms'];
             $p['shunts'] += (int) $r['shunts'];
             $p['contacts'] += (int) $r['contacts'];
+            $p['fp'] += (int) $r['fp'];
             $p['created_at'] = max($p['created_at'], $r['created_at']);
             $p['n']++;
             unset($p);
         }
         $rows = array_values(array_filter($players, fn ($p) => $p['n'] === count($ids)));
+        // Overall counts as first person only if every one of the yards was.
+        foreach ($rows as &$p) {
+            $p['fp'] = $p['fp'] === $p['n'] ? 1 : 0;
+        }
+        unset($p);
     } else {
         $rows = array_values(ym_best_rows([$level], $week));
     }
@@ -289,6 +300,7 @@ function ym_board(string $level, ?string $week, ?string $playerId): array
             'totalMs' => (int) $r['total_ms'],
             'shunts' => (int) $r['shunts'],
             'contacts' => (int) $r['contacts'],
+            'fp' => (int) $r['fp'] === 1,
             'id' => (int) $r['id'],
             'you' => $playerId !== null && $r['player_id'] === $playerId,
         ];

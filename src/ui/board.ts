@@ -74,7 +74,7 @@ function row(e: BoardEntry, overall: boolean): string {
     : '';
   return `<tr class="${e.you ? 'you' : ''}">
     <td>${e.pos}</td>
-    <td>${escapeHtml(e.name)}${e.you ? ' (you)' : ''}</td>
+    <td>${escapeHtml(e.name)}${e.fp ? ' <span class="fp-badge" title="Driven in first person">(FP)</span>' : ''}${e.you ? ' (you)' : ''}</td>
     <td aria-label="${e.stars} stars">${stars(e.stars, overall)}</td>
     <td>${formatTime(e.totalMs / 1000)}</td>
     <td>${e.shunts}</td>

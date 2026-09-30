@@ -63,7 +63,11 @@ export class Session {
   recording = true;
   private recorder: ReplayRecorder | null = null;
 
-  private started = false;
+  private _started = false;
+  /** The truck has been put in gear this attempt (the clock is running). */
+  get started(): boolean {
+    return this._started;
+  }
   private hasReversed = false;
   private handbrakeJudged = false;
   private overWarned = false;
@@ -91,7 +95,7 @@ export class Session {
     this.time = 0;
     this.shunts = 0;
     this.contacts = 0;
-    this.started = false;
+    this._started = false;
     this.hasReversed = false;
     this.handbrakeJudged = false;
     this.overWarned = false;
@@ -146,10 +150,10 @@ export class Session {
     for (const e of articEvents) {
       if (e === 'gear-reverse') {
         this.hasReversed = true;
-        this.started = true;
+        this._started = true;
       } else if (e === 'gear-forward') {
         if (this.hasReversed) this.shunts++;
-        this.started = true;
+        this._started = true;
       } else if (e === 'jackknife') {
         this.fail(
           'JACKKNIFED',
@@ -167,7 +171,7 @@ export class Session {
       this.overWarned = false;
     }
 
-    if (this.started) this.time += dt;
+    if (this._started) this.time += dt;
     if (this.artic.speed < 0) this.reverseDistance -= this.artic.speed * dt;
 
     this.bayCheck = checkBay(this.artic, this.bay);
@@ -243,7 +247,7 @@ export class Session {
     if (!a.handbrake || !a.stopped) return;
     if (this.bayCheck.ok) {
       this.succeed();
-    } else if (!this.handbrakeJudged && this.started) {
+    } else if (!this.handbrakeJudged && this._started) {
       this.handbrakeJudged = true;
       this.events.push({ type: 'message', text: bayProblem(this.bayCheck) });
     }

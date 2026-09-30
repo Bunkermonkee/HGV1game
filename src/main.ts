@@ -144,8 +144,17 @@ function setView(v: View): void {
   saveSettings({ ...save.settings, view });
 }
 
+/**
+ * Switch view. Mid-level this restarts the run, so a run is driven in one
+ * view from start to finish (a first-person badge can't be earned by
+ * lining up overhead and switching before the handbrake).
+ */
 function toggleView(): void {
   setView(view === 'fpv' ? 'overhead' : 'fpv');
+  if (mode === 'play' && !replaying) {
+    restart();
+    toasts.show(`${view === 'fpv' ? 'First person' : 'Overhead view'} – run restarted`, theme.uiGood, 2.5);
+  }
 }
 
 function openViewPick(next: () => void): void {
@@ -393,7 +402,8 @@ function handleEvent(e: SessionEvent): void {
         pendingScreen = showReplayEnd;
         break;
       }
-      if (fpvActive() && r.replay) r.replay.view = 'fpv';
+      // Switching view mid-run restarts it, so the whole run was in this view.
+      if (view === 'fpv' && r.replay) r.replay.view = 'fpv';
       const level = session.yard;
       const newBest = recordResult(r.levelId, level.number, r.stars, r.total, r.shunts);
       const best = loadSave().levels[r.levelId];
@@ -452,7 +462,7 @@ function startReplay(stored: StoredReplay, back: () => void): void {
   mode = 'play';
   setPaused(false);
   document.getElementById('replay-info')!.textContent =
-    `${stored.name} · ${level.name} · ${formatTime(stored.totalMs / 1000)} · ${'★'.repeat(stored.stars)}`;
+    `${stored.name}${stored.fp ? ' (FP)' : ''} · ${level.name} · ${formatTime(stored.totalMs / 1000)} · ${'★'.repeat(stored.stars)}`;
   replayBar.classList.remove('hidden');
 }
 
@@ -598,7 +608,11 @@ function handleKeys(): void {
     return;
   }
   if (keys.wasPressed('KeyV') && !fpvActive()) toggleProView();
-  if (keys.wasPressed('KeyC') && (mode === 'play' || mode === 'briefing') && !replaying && fpvSupported) toggleView();
+  if (keys.wasPressed('KeyC') && fpvSupported && !replaying) {
+    // Before the truck has moved, C switches freely; after that, use the pause menu (it restarts the run).
+    if (mode === 'briefing' || (mode === 'play' && !session.started && session.state === 'driving')) toggleView();
+    else if (mode === 'play' && !paused && !isScreenOpen()) toasts.show('To switch view, pause – it restarts the run', theme.uiWarn, 2.5);
+  }
   if (keys.wasPressed('KeyM')) toggleSound();
   if (mode === 'briefing') {
     // A drive key on the briefing card starts the level straight away.

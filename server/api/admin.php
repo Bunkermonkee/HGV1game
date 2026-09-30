@@ -139,7 +139,7 @@ foreach ($rows as $r) {
     $levelName = $levels[$r['level_id']]['name'] ?? $r['level_id'];
     $hidden = fields($csrf, $level, $week);
     echo "<tr$cls><td>" . ym_h($levelName) . '</td>
-        <td>' . ym_h($r['name']) . ($r['banned'] ? ' <span class="tag">banned</span>' : '') . ($r['hidden'] ? ' <span class="tag">hidden</span>' : '') . '</td>
+        <td>' . ym_h($r['name']) . ($r['banned'] ? ' <span class="tag">banned</span>' : '') . ($r['hidden'] ? ' <span class="tag">hidden</span>' : '') . ((int) ($r['fp'] ?? 0) ? ' <span class="tag">FP</span>' : '') . '</td>
         <td>' . str_repeat('★', (int) $r['stars']) . '</td>
         <td>' . fmt_ms((int) $r['total_ms']) . '</td>
         <td>' . (int) $r['shunts'] . '</td>
