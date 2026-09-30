@@ -12,9 +12,9 @@ export type LogoVariant = 'onDark' | 'onLight';
 interface Brand {
   stationName: string;
   gameName: string;
-  /** Shown on the share card. */
+  /** Shown on the share card, under "Can you beat me?" (no https:// – it reads cleaner). */
   shareUrlText: string;
-  /** Used in the share text – the page the game is embedded on. */
+  /** Used in the share / copied text – the full URL, so it becomes a link. */
   shareUrl: string;
   logos: Record<LogoVariant, string>;
   /** Paint the light-background logo on the player's trailer roof. */
@@ -33,9 +33,8 @@ export const BRAND: Brand = neutral
   : {
       stationName: 'HGV1 Radio',
       gameName: 'Yard Master',
-      // Provisional address – confirm before launch.
-      shareUrlText: 'projectchimera.co.uk/yardmaster',
-      shareUrl: 'https://projectchimera.co.uk/yardmaster',
+      shareUrlText: 'hgv1yardmaster.online',
+      shareUrl: 'https://hgv1yardmaster.online',
       logos: { onDark: './brand/logo-on-dark.webp', onLight: './brand/logo-on-light.webp' },
       trailerRoofLogo: true,
     };

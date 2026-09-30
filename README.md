@@ -1,7 +1,10 @@
 # Yard Master – HGV reversing game for HGV1 Radio
 
 Browser mini-game: reverse a UK artic onto a loading bay. HTML5 Canvas +
-TypeScript, built with Vite into one static folder. No backend, no CDNs.
+TypeScript, built with Vite into one static folder. No CDNs; the optional
+leaderboard is a small PHP + MySQL API.
+
+**Play it: <https://hgv1yardmaster.online>**
 
 > **Status: version 1.2.** 10 levels, a Daily Yard, a banksman and yard
 > traffic, night/rain, Pro-view mirrors, touch and gamepad controls,
@@ -260,9 +263,11 @@ leaderboard and everything else works as normal.
 4. On the server, copy `api/config.sample.php` to **`api/config.php`** and
    fill in the database details, an admin password and some random text for
    `secret`.
-5. Visit `…/yardmaster/api/index.php?action=ping`. You should see
-   `{"ok":true,…}`. The tables are created automatically on first use.
-6. Log in to `…/yardmaster/api/admin.php` with your admin password.
+5. Visit <https://hgv1yardmaster.online/api/index.php?action=ping>. You
+   should see `{"ok":true,…}`. The tables are created automatically on
+   first use.
+6. Log in to <https://hgv1yardmaster.online/api/admin.php> with your admin
+   password.
 
 `config.php` is never included in the build and never overwritten by an
 update. The `.htaccess` in `api/` stops it being read from the web.
@@ -355,8 +360,16 @@ HGV1 Radio branding is applied:
   - `favicon.png` and `apple-touch-icon.png` are the browser-tab icons, made
     from the logo's G.
 - **Text** (`src/config/brand.ts`): station name "HGV1 Radio", and the share
-  address. The address is **provisional**
-  (`projectchimera.co.uk/yardmaster`) – confirm it before launch.
+  address: `hgv1yardmaster.online` on the share card (no `https://`, it
+  reads cleaner), and the full `https://hgv1yardmaster.online` in the
+  shared and copied text, so it becomes a link.
+- **Link previews** (`index.html`, `public/og-image.png`): Open Graph and
+  Twitter card tags, a canonical link and a 1200×630 preview image, so links
+  to the game show a proper card on Facebook, WhatsApp and X. The tags use
+  absolute `https://hgv1yardmaster.online` URLs – change them there if the
+  address ever moves. `scripts/make-og-image.mjs` redraws the image with the
+  game's renderer. After changing the tags or image, re-scrape the page in
+  Facebook's Sharing Debugger so it drops its cached preview.
 - **Player's truck:** orange cab, black curtainsider with a white roof and the
   logo. Set `trailerRoofLogo: false` in `brand.ts` to remove the roof logo.
 
@@ -414,29 +427,38 @@ src/levels/daily.ts   Daily Yard generator
 src/levels/proof.ts   drive-out solvability proof (levels + Daily Yard)
 server/api/           PHP leaderboard API + admin page (copied to dist/api)
 scripts/build-server.ts  copies the API into the build, writes levels.json
+scripts/make-og-image.mjs  redraws public/og-image.png (link preview)
 ```
 
 ## Deploying
 
-1. **Brand it first.**
-   - Colours: `styles/theme.css`.
-   - Station name and share URL: `src/config/brand.ts`. Point `shareUrl` at
-     the page the game is embedded on.
-   - Logo: put it in `public/` (e.g. `public/logo.png`) and set `logoSrc`
-     to `'./logo.png'`.
-2. **Build:** `npm install && npm run build`. The whole game is now in `dist/`
-   (`index.html` + `assets/`), about 100 KB in total.
-3. **Upload** the *contents* of `dist/` to a folder on your web server, e.g.
-   `/games/yardmaster/`. Use SFTP or your host's file manager, not the
-   WordPress media library. All paths are relative, so any folder works
-   without rebuilding.
-4. **Check** it directly at `https://your-site/games/yardmaster/`.
+The game's permanent home is **<https://hgv1yardmaster.online>**, served
+from the root of that domain.
+
+1. **Brand it.** Colours: `styles/theme.css`. Station name, share address
+   and logos: `src/config/brand.ts` (logo files in `public/brand/`). Link
+   preview tags: `index.html`.
+2. **Build:** `npm install && npm run build`. Everything is now in `dist/`:
+   `index.html`, `assets/`, `brand/`, `og-image.png` and `api/`.
+3. **Upload** the *contents* of `dist/` to the web root of
+   hgv1yardmaster.online (SFTP or your host's file manager). Add the new
+   `assets/` files alongside the old ones rather than replacing the folder,
+   so anyone with the old page open keeps working; tidy up old ones later.
+   Your `api/config.php` is never in the build, so it isn't overwritten.
+4. **Check** <https://hgv1yardmaster.online> (hard refresh), and the API at
+   <https://hgv1yardmaster.online/api/index.php?action=ping>.
+
+All game paths are relative, so the same build also works from a
+sub-folder – but the link-preview tags and share address point at the
+root of hgv1yardmaster.online.
 
 Tips:
 
-- Host it on the **same domain** as the WordPress site. Some browsers
-  (notably Safari) restrict storage in iframes from other domains, which
-  would lose players' saved progress and stars.
+- If the game is embedded on a site on a **different domain** (see below),
+  some browsers (notably Safari) restrict storage in cross-site iframes, so
+  saved progress and stars may not carry over between the embed and
+  hgv1yardmaster.online itself. Linking straight to
+  hgv1yardmaster.online avoids that.
 - Caching: the files in `assets/` have hashed names, so they can be cached
   for a year. Keep `index.html` on a short cache so updates show up.
 
@@ -448,7 +470,7 @@ editor) and paste:
 ```html
 <div class="yardmaster-wrap">
   <iframe
-    src="/games/yardmaster/"
+    src="https://hgv1yardmaster.online/"
     title="Yard Master – HGV reversing game"
     allow="fullscreen; web-share; clipboard-write; autoplay"
     allowfullscreen
