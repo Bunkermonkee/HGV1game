@@ -20,11 +20,9 @@ const data = await p.evaluate(async () => {
   const { LEVELS } = await import('/src/levels/index.ts');
   const { parkOnBay } = await import('/src/levels/proof.ts');
   const { quantize } = await import('/src/game/replay.ts');
-  const { TrafficVehicle } = await import('/src/game/traffic.ts');
   const { drawYard } = await import('/src/render/draw-yard.ts');
   const { drawObstacles } = await import('/src/render/draw-obstacles.ts');
   const { drawArtic } = await import('/src/render/draw-vehicle.ts');
-  const { drawBanksman, drawTraffic } = await import('/src/render/draw-people.ts');
   const { starPath } = await import('/src/share/card.ts');
   const logo = new Image(); logo.src = '/brand/logo-on-dark.webp'; await logo.decode();
 
@@ -41,25 +39,23 @@ const data = await p.evaluate(async () => {
   };
   hazard(0, 22); hazard(H - 16, 16);
 
-  // Scene: level 3 (Sight Side), rig partway round the swing, banksman calling it in.
+  // Scene: level 3 (Sight Side), rig partway round the swing onto Bay 7.
   const level = LEVELS[2];
-  const s = new Session(level); s.recording = false; s.simulateTraffic = false; s.reset(); parkOnBay(s);
+  const s = new Session(level); s.recording = false; s.reset(); parkOnBay(s);
   for (const m of [{ t: 1, st: 0, d: 7.5 }, { t: 1, st: 0.6, d: 10 }]) {
     let d = 0; const inp = quantize({ steerMode: 'absolute', steer: m.st, throttle: m.t });
     while (d < m.d) { s.step(inp); d += Math.abs(s.artic.speed) / 120; }
   }
   s.artic.speed = -1; s.artic.gear = 'R';
-  s.banksman.signal = 'left';
   const bay = s.bay, a = (bay.heading * Math.PI) / 180;
   const at = (al, la) => [bay.x + Math.cos(a) * al - Math.sin(a) * la, bay.y + Math.sin(a) * al + Math.cos(a) * la];
-  const fork = new TrafficVehicle({ kind: 'forklift', path: [at(24, 9), at(24, -20)], speed: 2 });
   const px = 610, py = 50, pw = 540, ph = 530;
   const [cx, cy] = at(18.5, 2);
   const k = pw / 34;
   ctx.save(); ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 24); ctx.clip();
   ctx.translate(px + pw / 2, py + ph / 2); ctx.rotate(-a + Math.PI / 2); ctx.scale(k, k); ctx.translate(-cx, -cy);
-  drawYard(ctx, s.yard); drawObstacles(ctx, s.obstacles); drawTraffic(ctx, [fork], 0.05);
-  drawBanksman(ctx, s.banksman, s.artic, 0.3); drawArtic(ctx, s.artic);
+  drawYard(ctx, s.yard); drawObstacles(ctx, s.obstacles);
+  drawArtic(ctx, s.artic);
   ctx.restore();
   ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 24); ctx.stroke();
 

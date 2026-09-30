@@ -7,7 +7,6 @@ import { theme } from '../config/theme.ts';
 import { DEG } from '../core/math.ts';
 import type { RunResult, Session } from '../game/session.ts';
 import { drawObstacles } from '../render/draw-obstacles.ts';
-import { drawBanksman, drawTraffic } from '../render/draw-people.ts';
 import { drawArtic } from '../render/draw-vehicle.ts';
 import { drawYard } from '../render/draw-yard.ts';
 import { formatTime } from '../render/hud.ts';
@@ -91,8 +90,6 @@ function scene(ctx: CanvasRenderingContext2D, session: Session, x: number, y: nu
   ctx.translate(-cx, -cy);
   drawYard(ctx, session.yard);
   drawObstacles(ctx, session.obstacles);
-  drawTraffic(ctx, session.traffic, 0);
-  if (session.banksman) drawBanksman(ctx, session.banksman, session.artic, 0);
   drawArtic(ctx, session.artic);
   ctx.restore();
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
