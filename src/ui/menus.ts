@@ -1,6 +1,6 @@
 /** Title, level select and briefing screens. */
 import { BRAND, brandLogo, type LogoVariant } from '../config/brand.ts';
-import type { SaveData } from '../game/storage.ts';
+import type { SaveData, View } from '../game/storage.ts';
 import type { YardLayout } from '../game/yard.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -8,6 +8,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const titleEl = $('title');
 const selectEl = $('select');
 const briefingEl = $('briefing');
+const viewPickEl = $('viewpick');
 const grid = $('level-grid');
 
 export interface MenuCallbacks {
@@ -19,6 +20,9 @@ export interface MenuCallbacks {
   onLevelSelect: () => void;
   onToggleProView: () => void;
   onToggleSound: () => void;
+  onPickView: (view: View) => void;
+  onViewBack: () => void;
+  onToggleView: () => void;
 }
 
 export function initMenus(cb: MenuCallbacks): void {
@@ -31,6 +35,10 @@ export function initMenus(cb: MenuCallbacks): void {
   $('btn-proview').addEventListener('click', cb.onToggleProView);
   $('pause-proview').addEventListener('click', cb.onToggleProView);
   $('btn-sound').addEventListener('click', cb.onToggleSound);
+  $('view-overhead').addEventListener('click', () => cb.onPickView('overhead'));
+  $('view-fpv').addEventListener('click', () => cb.onPickView('fpv'));
+  $('view-back').addEventListener('click', cb.onViewBack);
+  $('pause-view').addEventListener('click', cb.onToggleView);
   $('pause-sound').addEventListener('click', cb.onToggleSound);
   grid.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-index]');
@@ -55,7 +63,28 @@ export function setSoundLabel(on: boolean): void {
 export function setControlsNote(touch: boolean): void {
   $('controls-note').textContent = touch
     ? 'Drag the wheel to steer · hold FWD or REV to drive · P for the handbrake · ❚❚ to pause'
-    : '← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · M sound · Esc pause';
+    : '← → steer · ↑ forward · ↓ reverse · Space handbrake · C view · V mirrors · M sound · Esc pause';
+}
+
+/** Overhead / First person choice, shown after Play or Daily Yard. */
+export function showViewPick(current: View, fpvSupported: boolean): void {
+  hideMenus();
+  const fpv = $<HTMLButtonElement>('view-fpv');
+  const over = $<HTMLButtonElement>('view-overhead');
+  fpv.disabled = !fpvSupported;
+  fpv.classList.toggle('chosen', current === 'fpv' && fpvSupported);
+  over.classList.toggle('chosen', current === 'overhead' || !fpvSupported);
+  const note = $('view-note');
+  note.classList.toggle('hidden', fpvSupported);
+  note.textContent = fpvSupported ? '' : "First person needs WebGL 2, which this browser or device doesn't support.";
+  viewPickEl.classList.remove('hidden');
+  (current === 'fpv' && fpvSupported ? fpv : over).focus();
+}
+
+export function setViewLabel(view: View, fpvSupported: boolean): void {
+  const b = $<HTMLButtonElement>('pause-view');
+  b.textContent = view === 'fpv' ? 'Switch to overhead view' : 'Switch to first person';
+  b.classList.toggle('hidden', !fpvSupported);
 }
 
 export function setProViewLabel(on: boolean): void {
@@ -94,6 +123,7 @@ export function showLogo(slot: HTMLElement, variant: LogoVariant): void {
 }
 
 export function hideMenus(): void {
+  viewPickEl.classList.add('hidden');
   titleEl.classList.add('hidden');
   selectEl.classList.add('hidden');
   briefingEl.classList.add('hidden');

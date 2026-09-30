@@ -32,7 +32,9 @@ npm run preview    # serve dist/ locally
 | R | Restart |
 | Esc | Pause |
 | `` ` `` or F3 | Debug overlay |
-| V | Pro view mirrors on/off |
+| V | Pro view mirrors on/off (overhead view) |
+| C | Switch between overhead and first person |
+| Q / E, or drag the view | Look left / right (first person) |
 | M | Sound on/off |
 | + / − or mouse wheel | Zoom |
 
@@ -133,6 +135,37 @@ fails the level if anything is touched. The vehicle model is
 time-reversible, so a clean drive-out proves the reverse-in exists, and
 `--write` puts the truck where the drive-out ends. It also prints the
 route length and shunts as a guide for star targets. (Needs Node 22.6+.)
+
+## First person view (`src/render3d/`)
+
+After **Play** (or **Daily Yard**) the player picks **Overhead View** or
+**First Person**. The choice is remembered, and can be switched in the
+pause menu or with **C**.
+
+- **Driver's seat:** right-hand drive, eye about 2.5 m up, 0.55 m right of
+  the cab's centre line. You see the dashboard, pillars and door tops, and a
+  steering wheel that turns with the road wheels (desktop; on touch the
+  on-screen wheel does that job).
+- **Mirrors:** nearside (N/S) and offside (O/S) insets at the screen edges.
+  Each is a real 3D render from the mirror head on the cab, looking back down
+  the side and flipped left-to-right, so the trailer swings out of one mirror
+  and into the other as it articulates, just like the real thing.
+- **Looking round:** hold Q / E, or drag the view, to turn your head (up to
+  about 130°); it drifts back to straight ahead when you let go.
+- **The yard in 3D:** the floor is the 2D game's own top-down drawing used
+  as a texture, so bay lines, numbers and hatching match the overhead view
+  exactly. Buildings, dock doors (with number boards and traffic lights),
+  buffers, parked trailers, cones, bollards, the fence and the neighbouring
+  units are simple boxes, cylinders and cones.
+- **Night:** headlights, reversing lights, the trailer's amber side markers
+  and the dock lamps light the scene. **Rain:** fog closes in at the level's
+  `visibility`.
+- **How:** a small WebGL 2 renderer written for the game (`gl.ts`, about
+  300 lines, no libraries). The physics, scoring and replays are exactly the
+  same in both views. Replays always play back overhead; runs driven in
+  first person are tagged `view: "fpv"` in their replay data.
+- **Support:** needs WebGL 2 (all current browsers). Where it isn't
+  available, the First Person button is greyed out with a note.
 
 ## Night, rain and Pro view
 
@@ -349,6 +382,9 @@ src/config/vehicle.ts vehicle tuning constants
 src/config/theme.ts   reads theme.css variables for the canvas
 src/core/             maths helpers, keyboard, touch and gamepad input
 src/physics/          artic kinematics, oriented boxes, SAT collision
+src/render3d/         first-person 3D view: WebGL core (gl.ts), matrices,
+                      the yard/rig/mirrors scene (first-person.ts)
+src/render/cab-overlay.ts  first-person mirror frames and steering wheel
 src/render/           camera, yard/vehicle art, HUD, debug overlay,
                       night/rain (atmosphere.ts), mirrors (mirrors.ts)
 src/levels/           level JSON files, parser, bundler glob

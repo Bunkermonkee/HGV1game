@@ -32,6 +32,7 @@
   </head>
   <body>
     <div id="app">
+      <canvas id="game3d" class="hidden" aria-hidden="true"></canvas>
       <canvas id="game" tabindex="0" aria-label="Yard Master game"></canvas>
 
       <div id="touch" class="touch hidden">
@@ -77,7 +78,40 @@
             <button id="btn-proview" class="btn toggle" type="button" aria-pressed="false">Pro view mirrors: Off</button>
             <button id="btn-sound" class="btn toggle" type="button" aria-pressed="true">Sound: On</button>
           </div>
-          <p class="controls-note" id="controls-note">← → steer · ↑ forward · ↓ reverse · Space handbrake · V mirrors · M sound · Esc pause</p>
+          <p class="controls-note" id="controls-note">← → steer · ↑ forward · ↓ reverse · Space handbrake · C view · V mirrors · M sound · Esc pause</p>
+        </div>
+      </div>
+
+      <div id="viewpick" class="overlay menu hidden" role="dialog" aria-labelledby="viewpick-title">
+        <div class="viewpick-panel">
+          <h2 id="viewpick-title">How do you want to drive?</h2>
+          <div class="view-options">
+            <button id="view-overhead" class="view-btn" type="button">
+              <svg class="view-icon" viewBox="0 0 64 48" aria-hidden="true">
+                <rect x="2" y="2" width="60" height="44" rx="4" fill="#4a4d52" />
+                <path d="M12 2v20M24 2v20M36 2v20M48 2v20" stroke="#ffcc00" stroke-width="1.5" />
+                <rect x="37" y="8" width="10" height="26" rx="1" fill="#eef0f2" transform="rotate(18 42 21)" />
+                <rect x="44" y="32" width="8" height="8" rx="1" fill="#f85f00" transform="rotate(35 48 36)" />
+              </svg>
+              <span class="view-name">Overhead View</span>
+              <span class="view-desc">See the whole yard from above. The best way to learn.</span>
+            </button>
+            <button id="view-fpv" class="view-btn" type="button">
+              <svg class="view-icon" viewBox="0 0 64 48" aria-hidden="true">
+                <rect x="2" y="2" width="60" height="44" rx="4" fill="#9fb8cf" />
+                <rect x="2" y="26" width="60" height="20" fill="#4a4d52" />
+                <rect x="20" y="12" width="24" height="14" fill="#5d6670" />
+                <rect x="4" y="8" width="9" height="16" rx="2" fill="#111" stroke="#eee" stroke-width="1" />
+                <rect x="51" y="8" width="9" height="16" rx="2" fill="#111" stroke="#eee" stroke-width="1" />
+                <path d="M2 40h60v6H2z" fill="#1c1e21" />
+                <circle cx="32" cy="52" r="16" fill="none" stroke="#1c1e21" stroke-width="4" />
+              </svg>
+              <span class="view-name">First Person</span>
+              <span class="view-desc">From the driver's seat. Reverse on your mirrors, like the real thing.</span>
+            </button>
+          </div>
+          <p id="view-note" class="view-note hidden"></p>
+          <button id="view-back" class="btn small" type="button">Back</button>
         </div>
       </div>
 
@@ -156,6 +190,7 @@
           <h1 id="pause-title">Paused</h1>
           <button id="resume" class="btn primary" type="button">Resume</button>
           <button id="restart" class="btn" type="button">Restart</button>
+          <button id="pause-view" class="btn" type="button">Switch to first person</button>
           <button id="pause-proview" class="btn toggle" type="button" aria-pressed="false">Pro view mirrors: Off</button>
           <button id="pause-sound" class="btn toggle" type="button" aria-pressed="true">Sound: On</button>
           <button id="pause-levels" class="btn" type="button">Level select</button>

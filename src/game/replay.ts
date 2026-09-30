@@ -28,6 +28,8 @@ export interface ReplayData {
   handbrake: number[];
   /** [step, x mm, y mm, heading ×10⁴, trailer heading ×10⁴]. */
   checkpoints: [number, number, number, number, number][];
+  /** Driven in the first-person view (older and overhead runs leave it out). */
+  view?: 'fpv';
 }
 
 /** Round an input to what the recording can represent, so live play and playback match exactly. */

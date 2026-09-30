@@ -12,7 +12,7 @@ import { DEG, MPH_TO_MS, damp, lerp, wrapAngle, type Vec2 } from './core/math.ts
 import { TouchControls } from './core/touch.ts';
 import { quantize, ReplayPlayer, STEP } from './game/replay.ts';
 import { Session, type RunResult, type SessionEvent } from './game/session.ts';
-import { loadSave, recordResult, saveSettings } from './game/storage.ts';
+import { loadSave, recordResult, saveSettings, type View } from './game/storage.ts';
 import type { YardLayout } from './game/yard.ts';
 import { errorText, leaderboard, type StoredReplay } from './net/leaderboard.ts';
 import { Tutorial } from './game/tutorial.ts';
@@ -27,6 +27,8 @@ import { drawArtic } from './render/draw-vehicle.ts';
 import { drawYard } from './render/draw-yard.ts';
 import { banner, drawBayGuide, drawHud, drawRunStats, drawTip, hudHeight, Toasts } from './render/hud.ts';
 import { Mirrors } from './render/mirrors.ts';
+import { drawCabWheel, drawMirrorFrames, mirrorRects } from './render/cab-overlay.ts';
+import { FirstPerson } from './render3d/first-person.ts';
 import {
   hideMenus,
   initMenus,
@@ -34,7 +36,9 @@ import {
   setDailyLabel,
   setProViewLabel,
   setSoundLabel,
+  setViewLabel,
   showBriefing,
+  showViewPick,
   showLevelSelect,
   showTitle,
 } from './ui/menus.ts';
@@ -47,7 +51,9 @@ loadTheme();
 preloadBrand();
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d', { alpha: false })!;
+// Transparent, so the first-person 3D view (#game3d) can show through under the HUD.
+const ctx = canvas.getContext('2d')!;
+const canvas3d = document.getElementById('game3d') as HTMLCanvasElement;
 const pauseEl = document.getElementById('pause')!;
 const focusHint = document.getElementById('focus-hint')!;
 
@@ -104,7 +110,54 @@ let replaySpeed = 1;
 const replayBar = document.getElementById('replay-bar')!;
 const replayEnd = document.getElementById('replay-end')!;
 
+// ---- View: overhead or first person ------------------------------------------------
+
+const fpvSupported = FirstPerson.supported();
+let view: View = fpvSupported ? loadSave().settings.view : 'overhead';
+let firstPerson: FirstPerson | null = null;
+/** Where the driver is looking (radians from straight ahead, + = right), and where they want to. */
+let lookYaw = 0;
+let lookDrag: { x: number; yaw: number } | null = null;
+/** Where Play / Daily Yard go once a view has been picked. */
+let afterViewPick: () => void = () => {};
+
+function fpvActive(): boolean {
+  return view === 'fpv' && !replaying && (mode === 'play' || mode === 'briefing');
+}
+
+function firstPersonView(): FirstPerson | null {
+  if (!firstPerson && fpvSupported) {
+    try {
+      firstPerson = new FirstPerson(canvas3d);
+    } catch {
+      return null;
+    }
+  }
+  return firstPerson;
+}
+
+function setView(v: View): void {
+  view = fpvSupported ? v : 'overhead';
+  lookYaw = 0;
+  setViewLabel(view, fpvSupported);
+  const save = loadSave();
+  saveSettings({ ...save.settings, view });
+}
+
+function toggleView(): void {
+  setView(view === 'fpv' ? 'overhead' : 'fpv');
+}
+
+function openViewPick(next: () => void): void {
+  afterViewPick = next;
+  mode = 'menu';
+  setPaused(false);
+  hideScreens();
+  showViewPick(view, fpvSupported);
+}
+
 mirrors.enabled = loadSave().settings.proView;
+setViewLabel(view, fpvSupported);
 setProViewLabel(mirrors.enabled);
 sound.muted = !loadSave().settings.sound;
 setSoundLabel(!sound.muted);
@@ -266,10 +319,17 @@ function openBriefing(index: number): void {
   showBriefing(LEVELS[index]);
 }
 
+let fpvHintShown = false;
+
 function startDriving(): void {
   hideMenus();
   mode = 'play';
   canvas.focus();
+  if (fpvActive() && !fpvHintShown) {
+    fpvHintShown = true;
+    const look = touch.active ? 'Drag the view' : 'Hold Q / E (or drag the view)';
+    toasts.show(`First person: reverse on your mirrors. ${look} to look round.`, theme.uiGood, 6);
+  }
 }
 
 function restart(): void {
@@ -333,6 +393,7 @@ function handleEvent(e: SessionEvent): void {
         pendingScreen = showReplayEnd;
         break;
       }
+      if (fpvActive() && r.replay) r.replay.view = 'fpv';
       const level = session.yard;
       const newBest = recordResult(r.levelId, level.number, r.stars, r.total, r.shunts);
       const best = loadSave().levels[r.levelId];
@@ -458,9 +519,18 @@ initScreens({
   }),
 });
 initMenus({
-  onPlay: openLevelSelect,
+  onPlay: () => openViewPick(openLevelSelect),
   onPickLevel: openBriefing,
-  onPickDaily: openDaily,
+  onPickDaily: () => openViewPick(openDaily),
+  onPickView: (v) => {
+    setView(v);
+    afterViewPick();
+  },
+  onViewBack: openTitle,
+  onToggleView: () => {
+    toggleView();
+    setPaused(false);
+  },
   onStart: startDriving,
   onBackToTitle: openTitle,
   onLevelSelect: openLevelSelect,
@@ -527,7 +597,8 @@ function handleKeys(): void {
     boardReturn();
     return;
   }
-  if (keys.wasPressed('KeyV')) toggleProView();
+  if (keys.wasPressed('KeyV') && !fpvActive()) toggleProView();
+  if (keys.wasPressed('KeyC') && (mode === 'play' || mode === 'briefing') && !replaying && fpvSupported) toggleView();
   if (keys.wasPressed('KeyM')) toggleSound();
   if (mode === 'briefing') {
     // A drive key on the briefing card starts the level straight away.
@@ -692,6 +763,12 @@ function render(dt: number): void {
 }
 
 function renderFrame(dt: number): void {
+  const fpv = fpvActive() ? firstPersonView() : null;
+  canvas3d.classList.toggle('hidden', !fpv);
+  if (fpv) {
+    renderFirstPerson(fpv, dt);
+    return;
+  }
   const yard = session.yard;
   const artic = session.artic;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -747,13 +824,89 @@ function renderFrame(dt: number): void {
   }
 }
 
-function drawHelp(): void {
-  const lines = [
-    '← → / A D  steer',
-    '↑ / W  forward   ↓ / S  reverse',
-    'Space  handbrake   R  restart',
-    'V  mirrors   Esc  pause   + −  zoom',
-  ];
+/**
+ * First person: the 3D view renders on #game3d; the HUD, mirror frames and
+ * the steering wheel are drawn on the transparent 2D canvas above it.
+ */
+function renderFirstPerson(fpv: FirstPerson, dt: number): void {
+  const artic = session.artic;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const playing = mode === 'play';
+  const compact = touch.active;
+  let top = 90;
+  let bottom = viewH - hudHeight(viewW, viewH) - 16;
+  if (playing) {
+    if (!compact) drawCabWheel(ctx, artic, viewW, viewH);
+    const hudBottom = drawHud(ctx, artic, viewW, viewH, compact);
+    const statsBottom = drawRunStats(ctx, session, viewW);
+    let guideBottom = statsBottom;
+    if (session.state === 'driving' && session.bayCheck.near) {
+      drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
+      guideBottom = statsBottom + 70;
+    }
+    if (compact) {
+      top = Math.max(hudBottom + 12, 64);
+      bottom = viewH - 14 - Math.max(touchLayout.wheel, touchLayout.pedalH) - 12;
+      const left = 14 + touchLayout.wheel + 12;
+      const right = viewW - touchLayout.rightWidth - 12;
+      if (tutorial.current) {
+        if (right - left >= 200) drawTip(ctx, tutorial.current, viewW, viewH, { x: left, width: right - left, bottom: viewH - 14 });
+        else drawTip(ctx, tutorial.current, viewW, viewH, { x: 12, width: viewW - 24, bottom: viewH * 0.5 });
+      }
+    } else {
+      top = Math.max(90, guideBottom - 40);
+      bottom = (tutorial.current ? drawTip(ctx, tutorial.current, viewW, viewH) : viewH - hudHeight(viewW, viewH)) - 16;
+    }
+  }
+  const rects = mirrorRects(viewW, top, bottom);
+  fpv.render(session, { viewW, viewH, dpr, lookYaw, mirrors: rects });
+  drawMirrorFrames(ctx, rects);
+  if (session.yard.conditions.rain) atmosphere.drawRain(ctx, viewW, viewH, paused ? 0 : dt);
+  if (!playing) return;
+  toasts.draw(ctx, paused ? 0 : dt, viewW, viewH);
+  if (!touch.active && viewW > 700 && !debug.enabled) drawHelp(true);
+  if (endBanner && !isScreenOpen()) {
+    banner(ctx, viewW / 2, viewH * 0.42, endBanner.text, endBanner.colour, Math.min(64, viewW / 9));
+  }
+}
+
+/** Look around: Q / E (or a drag on the view) turn the driver's head; it drifts back when let go. */
+function updateLook(dt: number): void {
+  if (!fpvActive()) {
+    lookYaw = 0;
+    return;
+  }
+  const keyLook = (keys.isDown('KeyE') ? 1 : 0) - (keys.isDown('KeyQ') ? 1 : 0);
+  if (lookDrag) return;
+  const target = keyLook * 75 * DEG;
+  lookYaw += (target - lookYaw) * damp(keyLook ? 5 : 3, dt);
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (!fpvActive() || mode !== 'play' || paused) return;
+  lookDrag = { x: e.clientX, yaw: lookYaw };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!lookDrag) return;
+  const k = (Math.PI * 1.2) / Math.max(400, viewW);
+  lookYaw = Math.max(-2.3, Math.min(2.3, lookDrag.yaw + (e.clientX - lookDrag.x) * k));
+});
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  canvas.addEventListener(type, () => (lookDrag = null));
+}
+
+function drawHelp(firstPersonHelp = false): void {
+  const lines = firstPersonHelp
+    ? ['← → / A D  steer', '↑ / W  forward   ↓ / S  reverse', 'Space  handbrake   R  restart', 'Q E / drag  look   C  overhead']
+    : [
+        '← → / A D  steer',
+        '↑ / W  forward   ↓ / S  reverse',
+        'Space  handbrake   R  restart',
+        `V  mirrors   ${fpvSupported ? 'C  view' : 'Esc  pause'}   + −  zoom`,
+      ];
   ctx.save();
   ctx.font = `600 12px ${theme.uiFont}`;
   ctx.textAlign = 'right';
@@ -794,6 +947,7 @@ function frame(now: number): void {
   if (showTouch) touch.sync(session.artic.steer / (STEERING.maxAngle * DEG), session.artic.handbrake);
 
   if (mode === 'play' && !paused && !rotate) update(dt);
+  updateLook(dt);
   const a = session.artic;
   sound.update(dt, {
     running: mode === 'play' && !paused && !rotate && !isScreenOpen(),

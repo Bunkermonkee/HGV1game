@@ -12,7 +12,9 @@ html, body {
   user-select: none;
 }
 #app { position: fixed; inset: 0; }
-#game {
+#game, #game3d {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -501,3 +503,30 @@ html, body {
   .title-card .btn { min-height: 44px; font-size: 16px; padding: 6px 12px; }
   .title-card .btn.big { min-height: 48px; font-size: 18px; }
 }
+
+/* ---- View picker (Overhead / First person) ---- */
+.viewpick-panel { margin: auto; width: min(720px, 100%); display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center; }
+.viewpick-panel h2 { margin: 0; font: 900 clamp(22px, 4vw, 30px) var(--ui-font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.view-options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; }
+@media (max-width: 520px) { .view-options { grid-template-columns: 1fr; } }
+.view-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+}
+.view-btn:hover:not(:disabled) { border-color: var(--brand-secondary); }
+.view-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.view-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.view-btn.chosen { border-color: var(--brand-primary); }
+.view-icon { width: 128px; height: 96px; border-radius: 8px; overflow: hidden; }
+.view-name { font: 900 20px var(--ui-font-display); text-transform: uppercase; color: var(--brand-secondary); }
+.view-desc { font-size: 15px; line-height: 1.35; color: var(--ui-text-muted); }
+.view-note { margin: 0; font-size: 14px; color: var(--ui-warn); }

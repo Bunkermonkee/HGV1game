@@ -7,9 +7,13 @@ export interface LevelRecord {
   bestShunts: number;
 }
 
+export type View = 'overhead' | 'fpv';
+
 export interface Settings {
   proView: boolean;
   sound: boolean;
+  /** Overhead or first-person (driver's seat) view. */
+  view: View;
 }
 
 /** Leaderboard identity: a random id (no personal data) and a display name. */
@@ -29,7 +33,7 @@ export interface SaveData {
 }
 
 function blank(): SaveData {
-  return { levels: {}, unlocked: 1, settings: { proView: false, sound: true } };
+  return { levels: {}, unlocked: 1, settings: { proView: false, sound: true, view: 'overhead' } };
 }
 
 export function loadSave(): SaveData {
