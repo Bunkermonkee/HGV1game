@@ -5,7 +5,9 @@
  *   GET  ?action=ping
  *   GET  ?action=board&level=<level id | overall>&period=<week | all>&player=<id>
  *   GET  ?action=replay&id=<score id>
- *   POST ?action=submit   (JSON body – see ym_submit)
+ *   POST ?action=submit     (JSON body – see ym_submit)
+ *   POST ?action=link_create { playerId }        → { code }
+ *   POST ?action=link_use    { code, playerId }  → { playerId, name }
  */
 
 declare(strict_types=1);
@@ -24,6 +26,10 @@ try {
             ym_replay_action();
         case 'submit':
             ym_submit();
+        case 'link_create':
+            ym_link_create();
+        case 'link_use':
+            ym_link_use();
         default:
             ym_json(['ok' => false, 'error' => 'unknown_action'], 404);
     }
@@ -165,18 +171,19 @@ function ym_submit(): void // never returns: always ends the request
            ->execute([$player, $name, $now, $now]);
     }
 
-    // Keep the better of this run and any earlier one this week.
+    // Driven in first person? The game tags the replay; the board shows an (FP) badge.
+    $fp = ($replay['view'] ?? null) === 'fpv' ? 1 : 0;
+
+    // Keep the better of this run and any earlier one this week, in the same view.
     $week = ym_week();
-    $q = $db->prepare('SELECT id, stars, total_ms, shunts FROM ym_scores WHERE player_id = ? AND level_id = ? AND week = ?');
-    $q->execute([$player, $levelId, $week]);
+    $q = $db->prepare('SELECT id, stars, total_ms, shunts FROM ym_scores WHERE player_id = ? AND level_id = ? AND week = ? AND fp = ?');
+    $q->execute([$player, $levelId, $week, $fp]);
     $prev = $q->fetch();
     $better = !$prev
         || $stars > (int) $prev['stars']
         || ($stars === (int) $prev['stars'] && ($totalMs < (int) $prev['total_ms']
             || ($totalMs === (int) $prev['total_ms'] && $shunts < (int) $prev['shunts'])));
     $replayJson = json_encode($replay, JSON_UNESCAPED_SLASHES);
-    // Driven in first person? The game tags the replay; the board shows an (FP) badge.
-    $fp = ($replay['view'] ?? null) === 'fpv' ? 1 : 0;
     if (!$prev) {
         $db->prepare('INSERT INTO ym_scores (player_id, level_id, week, stars, total_ms, time_ms, shunts, contacts, replay, fp, created_at, ip_hash)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -188,8 +195,8 @@ function ym_submit(): void // never returns: always ends the request
     }
 
     $isDaily = strncmp($levelId, 'daily-', 6) === 0;
-    $weekBoard = ym_board($levelId, $isDaily ? null : $week, $player);
-    $allBoard = $isDaily ? $weekBoard : ym_board($levelId, null, $player);
+    $weekBoard = ym_board($levelId, $isDaily ? null : $week, $player, $fp);
+    $allBoard = $isDaily ? $weekBoard : ym_board($levelId, null, $player, $fp);
     ym_json([
         'ok' => true,
         'improved' => $better,
@@ -197,4 +204,101 @@ function ym_submit(): void // never returns: always ends the request
         'week' => ['pos' => $weekBoard['you']['pos'] ?? null, 'total' => $weekBoard['total'], 'best' => $weekBoard['you']],
         'all' => ['pos' => $allBoard['you']['pos'] ?? null, 'total' => $allBoard['total']],
     ]);
+}
+
+// ---- Linking devices ---------------------------------------------------------------
+//
+// A driver is a random id kept in the browser, so each browser starts as a new
+// driver. To join them up, the device that has posted shows a short code, and
+// the other device enters it: it takes on the same driver id, and any runs it
+// had already posted are merged in (keeping the better run per board).
+
+function ym_post_json(): array
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        ym_json(['ok' => false, 'error' => 'post_only'], 405);
+    }
+    $in = json_decode((string) file_get_contents('php://input', false, null, 0, 4096), true);
+    return is_array($in) ? $in : ym_json(['ok' => false, 'error' => 'bad_json'], 400);
+}
+
+function ym_link_create(): void // never returns: always ends the request
+{
+    $in = ym_post_json();
+    $player = ym_valid_player($in['playerId'] ?? null) ?? ym_json(['ok' => false, 'error' => 'bad_player'], 400);
+    ym_rate_limit('link', 20, 600);
+    $db = ym_db();
+    $q = $db->prepare('SELECT banned FROM ym_players WHERE player_id = ?');
+    $q->execute([$player]);
+    $p = $q->fetch();
+    if (!$p) {
+        ym_json(['ok' => false, 'error' => 'no_scores'], 400);
+    }
+    if ((int) $p['banned'] === 1) {
+        ym_json(['ok' => false, 'error' => 'banned'], 403);
+    }
+    $db->prepare('DELETE FROM ym_links WHERE expires_at < ? OR player_id = ?')->execute([time(), $player]);
+    $code = '';
+    for ($i = 0; $i < 8; $i++) {
+        $code .= YM_CODE_CHARS[random_int(0, strlen(YM_CODE_CHARS) - 1)];
+    }
+    $db->prepare('INSERT INTO ym_links (code, player_id, expires_at) VALUES (?, ?, ?)')->execute([$code, $player, time() + YM_LINK_SECONDS]);
+    ym_json(['ok' => true, 'code' => substr($code, 0, 4) . '-' . substr($code, 4), 'minutes' => intdiv(YM_LINK_SECONDS, 60)]);
+}
+
+function ym_link_use(): void // never returns: always ends the request
+{
+    $in = ym_post_json();
+    ym_rate_limit('link_use', 20, 600);
+    $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($in['code'] ?? '')) ?? '');
+    $old = ym_valid_player($in['playerId'] ?? null);
+    $db = ym_db();
+    $q = $db->prepare('SELECT player_id FROM ym_links WHERE code = ? AND expires_at >= ?');
+    $q->execute([$code, time()]);
+    $target = $q->fetchColumn();
+    $link = false;
+    if (is_string($target)) {
+        $q = $db->prepare('SELECT player_id, name, banned FROM ym_players WHERE player_id = ?');
+        $q->execute([$target]);
+        $link = $q->fetch();
+    }
+    if (strlen($code) !== 8 || !$link) {
+        ym_json(['ok' => false, 'error' => 'bad_code'], 400);
+    }
+    if ((int) $link['banned'] === 1) {
+        ym_json(['ok' => false, 'error' => 'banned'], 403);
+    }
+    $target = $link['player_id'];
+    $db->beginTransaction();
+    $db->prepare('DELETE FROM ym_links WHERE code = ?')->execute([$code]);
+    $merged = $old !== null && $old !== $target ? ym_merge_player($db, $old, $target) : 0;
+    $db->commit();
+    ym_json(['ok' => true, 'playerId' => $target, 'name' => $link['name'], 'merged' => $merged]);
+}
+
+/** Move $from's runs to $to, keeping the better run on each board; then remove $from. Returns runs moved. */
+function ym_merge_player(PDO $db, string $from, string $to): int
+{
+    $q = $db->prepare('SELECT * FROM ym_scores WHERE player_id = ?');
+    $q->execute([$from]);
+    $find = $db->prepare('SELECT * FROM ym_scores WHERE player_id = ? AND level_id = ? AND week = ? AND fp = ?');
+    $moved = 0;
+    foreach ($q->fetchAll() as $r) {
+        $find->execute([$to, $r['level_id'], $r['week'], $r['fp']]);
+        $mine = $find->fetch();
+        if (!$mine) {
+            $db->prepare('UPDATE ym_scores SET player_id = ? WHERE id = ?')->execute([$to, $r['id']]);
+            $moved++;
+        } elseif (ym_cmp($r, $mine) < 0) {
+            // The other device's run was better: it replaces this driver's run.
+            $db->prepare('DELETE FROM ym_scores WHERE id = ?')->execute([$mine['id']]);
+            $db->prepare('UPDATE ym_scores SET player_id = ? WHERE id = ?')->execute([$to, $r['id']]);
+            $moved++;
+        } else {
+            $db->prepare('DELETE FROM ym_scores WHERE id = ?')->execute([$r['id']]);
+        }
+    }
+    $db->prepare('DELETE FROM ym_players WHERE player_id = ?')->execute([$from]);
+    $db->prepare('DELETE FROM ym_links WHERE player_id = ?')->execute([$from]);
+    return $moved;
 }

@@ -1,5 +1,5 @@
 /** Leaderboard screen: pick a board, This week / All time, watch replays. */
-import { getPlayer } from '../game/storage.ts';
+import { getPlayer, savePlayer } from '../game/storage.ts';
 import { errorText, leaderboard, type Board, type BoardEntry, type Period } from '../net/leaderboard.ts';
 import { formatTime } from '../render/hud.ts';
 
@@ -33,6 +33,48 @@ export function initBoard(cb: BoardCallbacks): void {
   rows.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-score]');
     if (btn) cb.onWatch(Number(btn.dataset.score));
+  });
+  initLinking();
+}
+
+// ---- Linking devices ----------------------------------------------------------------
+
+function initLinking(): void {
+  const toggle = $<HTMLButtonElement>('link-toggle');
+  const panel = $('link-panel');
+  const msg = $('link-msg');
+  const codeOut = $('link-code');
+  const input = $<HTMLInputElement>('link-input');
+  toggle.addEventListener('click', () => {
+    const open = panel.classList.toggle('hidden') === false;
+    toggle.setAttribute('aria-expanded', String(open));
+    msg.textContent = '';
+  });
+  $('link-show').addEventListener('click', async () => {
+    msg.textContent = '';
+    codeOut.textContent = '…';
+    try {
+      const r = await leaderboard.linkCreate(getPlayer().id);
+      codeOut.textContent = r.code;
+      msg.textContent = `Enter this on your other device within ${r.minutes} minutes.`;
+    } catch (err) {
+      codeOut.textContent = '';
+      msg.textContent = errorText(err);
+    }
+  });
+  $('link-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = 'Linking…';
+    try {
+      const me = getPlayer();
+      const r = await leaderboard.linkUse(input.value, me.id);
+      savePlayer({ ...me, id: r.playerId, name: r.name });
+      input.value = '';
+      msg.textContent = `Linked – this device now posts as ${r.name}.${r.merged ? ` ${r.merged} run${r.merged === 1 ? '' : 's'} from here merged in.` : ''}`;
+      void load();
+    } catch (err) {
+      msg.textContent = errorText(err);
+    }
   });
 }
 
@@ -93,10 +135,10 @@ async function load(): Promise<void> {
   note.textContent = daily
     ? "Today's yard only – there's a new one tomorrow."
     : overall
-      ? 'Total stars across all 10 yards (time breaks ties). Only drivers who have finished every yard appear.'
+      ? 'Total stars across all 10 yards (time breaks ties), overhead and first person (FP) counted separately. You appear once you have finished every yard in that view.'
       : p === 'week'
-        ? 'Best run per driver this week. The weekly board resets on Monday at midnight.'
-        : 'Best run per driver, ever.';
+        ? 'Best overhead and best first-person (FP) run per driver this week. Resets on Monday at midnight.'
+        : 'Best overhead and best first-person (FP) run per driver, ever.';
 
   const mine = ++request;
   rows.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
@@ -117,6 +159,6 @@ async function load(): Promise<void> {
     html += `<tr class="gap"><td colspan="6">⋯</td></tr>` + row(board.you, overall);
   }
   rows.innerHTML = html;
-  const total = board.total;
+  const total = board.drivers ?? board.total;
   note.textContent += ` ${total} driver${total === 1 ? '' : 's'} on this board.`;
 }

@@ -145,11 +145,10 @@ After **Play** (or **Daily Yard**) the player picks **Overhead View** or
   so nobody can line up overhead and switch to first person just before the
   handbrake. **C** switches freely on the briefing card and before the truck
   has moved; after that it tells you to use the pause menu.
-- **Leaderboard badge:** runs driven in first person show **(FP)** next to
-  the name (and in the replay bar and the admin page). On the overall board
-  it shows only if every yard was driven in first person. The game tags the
-  run's replay with `view: "fpv"`; the server stores it in `ym_scores.fp`,
-  a column it adds by itself to an existing table the first time it runs.
+- **Leaderboard:** first-person runs show **(FP)** next to the name (and in
+  the replay bar and the admin page), and each driver's best first-person
+  run is kept alongside their best overhead run. The game tags the run's
+  replay with `view: "fpv"`; the server stores it in `ym_scores.fp`.
 
 - **Driver's seat:** right-hand drive, eye about 2.5 m up, 0.55 m right of
   the cab's centre line. You see the dashboard, pillars and door tops, and a
@@ -216,10 +215,19 @@ scanner), on MySQL 5.7+/8 or MariaDB.
 - **Boards:** each level and the Daily Yard, **This week** (resets Monday
   00:00 UK time) and **All time**, plus an **Overall** board for drivers who
   have finished all 10 yards. Ranking: stars, then total time with penalties,
-  then fewest shunts. One entry per driver per board, their best.
+  then fewest shunts. Each driver keeps two entries per board: their best
+  **overhead** run and their best **first-person** run (marked **(FP)**). On
+  the Overall board the two views are added up separately, and a driver
+  appears in a view once they've finished all 10 yards in it.
 - **Players:** a display name only, chosen the first time they post; after
   that runs post automatically. The game stores a random player id in the
   browser. No email, no accounts, no tracking cookies.
+- **More than one device:** each browser starts as a new driver. Under the
+  leaderboard, **Playing on more than one device?** joins them up: the
+  device that has already posted shows a code (like `87R4-KX73`, valid for
+  15 minutes, single use), and the other device enters it. That device then
+  posts as the same driver, and any runs it had already posted are merged
+  in, keeping the better run on each board.
 - **Checks on every score:**
   - it can't be faster than physically possible for the level;
   - the time has to fit the recorded run length;
@@ -240,6 +248,10 @@ scanner), on MySQL 5.7+/8 or MariaDB.
 
 If the API isn't installed or can't reach its database, the game hides the
 leaderboard and everything else works as normal.
+
+Database upgrades happen by themselves: the API adds the `fp` column, widens
+the one-best-run-per-week rule to cover each view, and creates the
+`ym_links` table for device codes the first time it runs after an update.
 
 ### Setting it up on IONOS
 

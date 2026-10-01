@@ -13,6 +13,8 @@ const YM_MAX_STEPS = 120 * 60 * 20; // 20 minutes
 const YM_MAX_BODY = 400000;       // bytes
 const YM_BOARD_SIZE = 20;
 const YM_NAME_MAX = 20;
+const YM_LINK_SECONDS = 900;    // device-link codes last 15 minutes
+const YM_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L
 
 date_default_timezone_set(YM_TZ);
 
@@ -75,13 +77,23 @@ function ym_schema(PDO $db): void
         hidden TINYINT(1) NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL,
         ip_hash CHAR(64) NOT NULL,
-        UNIQUE KEY one_per_week (player_id, level_id, week),
+        UNIQUE KEY one_per_week (player_id, level_id, week, fp),
         KEY board (level_id, week, hidden)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     // Added later: runs driven in the first-person view (older tables get the column here).
     if (!$db->query("SHOW COLUMNS FROM ym_scores LIKE 'fp'")->fetch()) {
         $db->exec('ALTER TABLE ym_scores ADD COLUMN fp TINYINT(1) NOT NULL DEFAULT 0 AFTER replay');
     }
+    // Added later: a best run per week for EACH view (overhead and first person).
+    if (count($db->query("SHOW INDEX FROM ym_scores WHERE Key_name = 'one_per_week'")->fetchAll()) === 3) {
+        $db->exec('ALTER TABLE ym_scores DROP INDEX one_per_week, ADD UNIQUE KEY one_per_week (player_id, level_id, week, fp)');
+    }
+    // Short-lived codes for linking another device to the same driver.
+    $db->exec("CREATE TABLE IF NOT EXISTS ym_links (
+        code CHAR(8) NOT NULL PRIMARY KEY,
+        player_id CHAR(36) NOT NULL,
+        expires_at INT UNSIGNED NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->exec("CREATE TABLE IF NOT EXISTS ym_rate (
         ip_hash CHAR(64) NOT NULL,
         action VARCHAR(16) NOT NULL,
@@ -221,8 +233,9 @@ function ym_cmp(array $a, array $b): int
 }
 
 /**
- * Each player's best row per level. $levels: level ids; $week: one week or
- * null for all time. Returns rows keyed "player|level".
+ * Each player's best row per level and view (overhead / first person).
+ * $levels: level ids; $week: one week or null for all time. Returns rows
+ * keyed "player|level|fp".
  */
 function ym_best_rows(array $levels, ?string $week): array
 {
@@ -234,17 +247,17 @@ function ym_best_rows(array $levels, ?string $week): array
     }
     $sql = 'SELECT s.id, s.player_id, s.level_id, s.stars, s.total_ms, s.shunts, s.contacts, s.fp, s.created_at, p.name
             FROM ym_scores s
-            JOIN (SELECT player_id, level_id, MIN(' . ym_key() . ") AS k
+            JOIN (SELECT player_id, level_id, fp, MIN(' . ym_key() . ") AS k
                   FROM ym_scores WHERE level_id IN ($in) AND hidden = 0$weekSql
-                  GROUP BY player_id, level_id) b
-              ON b.player_id = s.player_id AND b.level_id = s.level_id AND b.k = " . ym_key('s') . "
+                  GROUP BY player_id, level_id, fp) b
+              ON b.player_id = s.player_id AND b.level_id = s.level_id AND b.fp = s.fp AND b.k = " . ym_key('s') . "
             JOIN ym_players p ON p.player_id = s.player_id
             WHERE s.level_id IN ($in) AND s.hidden = 0" . ($week !== null ? ' AND s.week = ?' : '') . ' AND p.banned = 0';
     $q = ym_db()->prepare($sql);
     $q->execute(array_merge($params, $params));
     $best = [];
     foreach ($q->fetchAll() as $r) {
-        $k = $r['player_id'] . '|' . $r['level_id'];
+        $k = $r['player_id'] . '|' . $r['level_id'] . '|' . $r['fp'];
         // Two equally good runs (e.g. in different weeks): keep the earlier one.
         if (!isset($best[$k]) || ym_cmp($r, $best[$k]) < 0) {
             $best[$k] = $r;
@@ -255,36 +268,32 @@ function ym_best_rows(array $levels, ?string $week): array
 
 /**
  * Ranked board rows. $level is a level id or 'overall'; $week limits to one
- * week (null = all time). Returns the top rows plus the player's own row.
+ * week (null = all time). Each driver can appear twice: their best overhead
+ * run and their best first-person run. Returns the top rows plus the
+ * player's own row: the one in view $youFp (0 / 1), or their best if null.
  */
-function ym_board(string $level, ?string $week, ?string $playerId): array
+function ym_board(string $level, ?string $week, ?string $playerId, ?int $youFp = null): array
 {
     if ($level === 'overall') {
         $ids = array_keys(ym_levels());
         if (!$ids) {
             return ['entries' => [], 'you' => null, 'total' => 0];
         }
-        // Sum each player's best on every campaign level; only players who have done them all.
-        $players = [];
+        // Sum each player's best on every campaign level, per view; only complete sets count.
+        $sets = [];
         foreach (ym_best_rows($ids, $week) as $r) {
-            $p = &$players[$r['player_id']];
+            $p = &$sets[$r['player_id'] . '|' . $r['fp']];
             $p ??= ['player_id' => $r['player_id'], 'name' => $r['name'], 'stars' => 0, 'total_ms' => 0, 'shunts' => 0,
-                    'contacts' => 0, 'created_at' => '', 'id' => 0, 'n' => 0, 'fp' => 0];
+                    'contacts' => 0, 'created_at' => '', 'id' => 0, 'n' => 0, 'fp' => (int) $r['fp']];
             $p['stars'] += (int) $r['stars'];
             $p['total_ms'] += (int) $r['total_ms'];
             $p['shunts'] += (int) $r['shunts'];
             $p['contacts'] += (int) $r['contacts'];
-            $p['fp'] += (int) $r['fp'];
             $p['created_at'] = max($p['created_at'], $r['created_at']);
             $p['n']++;
             unset($p);
         }
-        $rows = array_values(array_filter($players, fn ($p) => $p['n'] === count($ids)));
-        // Overall counts as first person only if every one of the yards was.
-        foreach ($rows as &$p) {
-            $p['fp'] = $p['fp'] === $p['n'] ? 1 : 0;
-        }
-        unset($p);
+        $rows = array_values(array_filter($sets, fn ($p) => $p['n'] === count($ids)));
     } else {
         $rows = array_values(ym_best_rows([$level], $week));
     }
@@ -292,7 +301,9 @@ function ym_board(string $level, ?string $week, ?string $playerId): array
 
     $entries = [];
     $you = null;
+    $drivers = [];
     foreach ($rows as $i => $r) {
+        $drivers[$r['player_id']] = true;
         $e = [
             'pos' => $i + 1,
             'name' => $r['name'],
@@ -304,14 +315,14 @@ function ym_board(string $level, ?string $week, ?string $playerId): array
             'id' => (int) $r['id'],
             'you' => $playerId !== null && $r['player_id'] === $playerId,
         ];
-        if ($e['you']) {
+        if ($e['you'] && $you === null && ($youFp === null || (int) $r['fp'] === $youFp)) {
             $you = $e;
         }
         if ($i < YM_BOARD_SIZE) {
             $entries[] = $e;
         }
     }
-    return ['entries' => $entries, 'you' => $you, 'total' => count($rows)];
+    return ['entries' => $entries, 'you' => $you, 'total' => count($rows), 'drivers' => count($drivers)];
 }
 
 function ym_h(string $s): string

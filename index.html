@@ -148,6 +148,23 @@
               <tbody id="board-rows"></tbody>
             </table>
           </div>
+          <div class="link-box">
+            <button id="link-toggle" class="btn small" type="button" aria-expanded="false" aria-controls="link-panel">Playing on more than one device?</button>
+            <div id="link-panel" class="link-panel hidden">
+              <p class="link-intro">Link your phone, work and home browsers so all your runs count as one driver. Any runs already posted from this device are merged in.</p>
+              <div class="link-step">
+                <span class="link-label">1. On a device you've already posted from:</span>
+                <button id="link-show" class="btn small" type="button">Show my code</button>
+                <output id="link-code" class="link-code" for="link-show"></output>
+              </div>
+              <form id="link-form" class="link-step">
+                <label class="link-label" for="link-input">2. On the other device, enter that code:</label>
+                <input id="link-input" name="link-input" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345" required />
+                <button class="btn small primary" type="submit">Link</button>
+              </form>
+              <p id="link-msg" class="link-msg" role="status"></p>
+            </div>
+          </div>
         </div>
       </div>
 

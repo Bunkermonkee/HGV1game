@@ -18,6 +18,11 @@ export class Keyboard {
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
+      // Typing in a text box (name, link code) is never a game key.
+      const el = e.target;
+      if ((el instanceof HTMLInputElement && el.type !== 'button') || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+        return;
+      }
       // Leave Space/Enter alone on buttons so the HTML screens stay keyboard-usable.
       const onControl = e.target instanceof HTMLButtonElement || e.target instanceof HTMLInputElement;
       if (CAPTURED.has(e.code) && !onControl) e.preventDefault();

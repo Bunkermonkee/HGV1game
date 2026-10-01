@@ -31,6 +31,8 @@ export interface Board {
   entries: BoardEntry[];
   you: BoardEntry | null;
   total: number;
+  /** Different drivers on the board (each can have an overhead and an FP line). */
+  drivers?: number;
 }
 
 export interface SubmitPayload {
@@ -125,6 +127,16 @@ export const leaderboard = {
     return call<SubmitResult>('action=submit', p);
   },
 
+  /** A short code another device can enter to become this driver. */
+  linkCreate(playerId: string): Promise<{ code: string; minutes: number }> {
+    return call('action=link_create', { playerId });
+  },
+
+  /** Become the driver behind `code`; this device's own runs are merged in. */
+  linkUse(code: string, playerId: string): Promise<{ playerId: string; name: string; merged: number }> {
+    return call('action=link_use', { code, playerId });
+  },
+
   replay(id: number): Promise<StoredReplay> {
     return call<StoredReplay>(`action=replay&id=${encodeURIComponent(String(id))}`);
   },
@@ -144,6 +156,10 @@ export function errorText(e: unknown): string {
     case 'bad_time':
     case 'bad_replay':
       return "That run couldn't be verified, so it wasn't posted.";
+    case 'bad_code':
+      return "That code didn't work. Codes last 15 minutes and work once – get a new one on your other device.";
+    case 'no_scores':
+      return 'Post a run from this device first, then you can link your other devices to it.';
     case 'bad_level':
       return 'This yard has closed – scores for it are no longer taken.';
     case 'network':
