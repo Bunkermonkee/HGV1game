@@ -176,16 +176,19 @@ export function drawCab(ctx: CanvasRenderingContext2D, artic: Artic): void {
 export interface TrailerLook {
   reversing?: boolean;
   braking?: boolean;
+  /** Standing on its landing legs (uncoupled): legs shown, no lights. */
+  parked?: boolean;
   curtain?: string;
   /** Logo painted on the roof (the player's trailer only). */
   roofLogo?: HTMLImageElement | null;
 }
 
 export function drawTrailer(ctx: CanvasRenderingContext2D, artic: Artic): void {
-  const h = artic.hitch;
+  const h = artic.kingpin;
   drawTrailerAt(ctx, h.x, h.y, artic.trailerHeading, {
-    reversing: artic.gear === 'R' && !artic.jackknifed,
-    braking: artic.braking || artic.handbrake,
+    reversing: artic.coupled && artic.gear === 'R' && !artic.jackknifed,
+    braking: artic.coupled && (artic.braking || artic.handbrake),
+    parked: !artic.coupled,
     roofLogo: BRAND.trailerRoofLogo ? brandLogo('onLight') : null,
   });
 }
@@ -201,6 +204,12 @@ export function drawTrailerAt(
   ctx.save();
   ctx.translate(kx, ky);
   ctx.rotate(heading);
+
+  // Landing legs, wound down while the trailer stands on its own.
+  if (look.parked) {
+    ctx.fillStyle = '#9aa0a6';
+    for (const s of [-1, 1]) ctx.fillRect(-2.5, s * 1.05 - 0.12, 0.24, 0.24);
+  }
 
   // Tri-axle bogie (mostly hidden under the body; peeks out when viewed tight).
   const tw = TRAILER.track / 2;
@@ -253,10 +262,11 @@ export function drawTrailerAt(
 
 /** Additive glows for reversing / brake lights (subtle by day, key at night). */
 export function drawLightGlows(ctx: CanvasRenderingContext2D, artic: Artic, strength = 0.35): void {
+  if (!artic.coupled) return;
   const reversing = artic.gear === 'R' && !artic.jackknifed;
   const braking = artic.braking || artic.handbrake;
   if (!reversing && !braking) return;
-  const h = artic.hitch;
+  const h = artic.kingpin;
   ctx.save();
   ctx.translate(h.x, h.y);
   ctx.rotate(artic.trailerHeading);
@@ -293,4 +303,23 @@ export function drawArtic(ctx: CanvasRenderingContext2D, artic: Artic): void {
   drawTrailer(ctx, artic);
   drawCab(ctx, artic);
   drawLightGlows(ctx, artic);
+  if (!artic.coupled) drawKingpinMark(ctx, artic);
+}
+
+/** Uncoupled: a small marker on the trailer roof over the kingpin, so you can see what you're aiming for. */
+function drawKingpinMark(ctx: CanvasRenderingContext2D, artic: Artic): void {
+  const k = artic.kingpin;
+  ctx.save();
+  ctx.translate(k.x, k.y);
+  ctx.rotate(artic.trailerHeading);
+  ctx.strokeStyle = theme.brandSecondary;
+  ctx.lineWidth = 0.12;
+  ctx.beginPath();
+  ctx.arc(0, 0, 0.42, 0, Math.PI * 2);
+  ctx.moveTo(-0.7, 0);
+  ctx.lineTo(0.7, 0);
+  ctx.moveTo(0, -0.7);
+  ctx.lineTo(0, 0.7);
+  ctx.stroke();
+  ctx.restore();
 }

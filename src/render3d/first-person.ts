@@ -352,9 +352,14 @@ export class FirstPerson {
       g.draw(g.cylinder, place(T, 0, r, s * (tw + 0.305), r, 0.01, r, 0, Math.PI / 2), STEEL);
     }
 
-    const hitch = artic.hitch;
-    const K = frame(hitch.x, 0, hitch.y, artic.trailerHeading);
-    this.drawTrailer(K, rgb(theme.trailerCurtain), false, artic.gear === 'R', night, true);
+    // The trailer sits on the fifth wheel, or stands on its legs waiting to be picked up.
+    const kp = artic.kingpin;
+    const K = frame(kp.x, 0, kp.y, artic.trailerHeading);
+    this.drawTrailer(K, rgb(theme.trailerCurtain), !artic.coupled, artic.coupled && artic.gear === 'R', night, true);
+    if (!artic.coupled) {
+      // Kingpin: the pin hanging under the trailer's front.
+      g.draw(g.cylinder, place(K, 0, DECK - 0.25, 0, 0.12, 0.3, 0.12), STEEL);
+    }
   }
 
   /**
@@ -400,7 +405,7 @@ export class FirstPerson {
     // Landing legs behind the kingpin (down to the ground when parked).
     for (const s of [-1, 1]) {
       const legH = parked ? DECK : 0.7;
-      g.draw(g.box, place(K, -1.1, DECK - legH / 2, s * 0.85, 0.12, legH, 0.12), STEEL);
+      g.draw(g.box, place(K, -2.4, DECK - legH / 2, s * 1.0, 0.12, legH, 0.12), STEEL);
     }
     if (parked) g.draw(g.box, place(K, T_FRONT - 0.1, DECK + bodyH / 2, 0, 0.2, bodyH, TRAILER.width), curtain);
     if (logo && this.logo) {
@@ -443,8 +448,8 @@ function environment(yard: YardLayout, artic: Artic, session: Session): Environm
   const c = yard.conditions;
   const lights: Light[] = [];
   const T = frame(artic.x, 0, artic.y, artic.heading);
-  const hitch = artic.hitch;
-  const K = frame(hitch.x, 0, hitch.y, artic.trailerHeading);
+  const kp = artic.kingpin;
+  const K = frame(kp.x, 0, kp.y, artic.trailerHeading);
   const fwd = transformDir(T, 1, -0.12, 0);
   const back = transformDir(K, -1, -0.15, 0);
   const norm = (v: [number, number, number]): [number, number, number] => {
@@ -456,7 +461,7 @@ function environment(yard: YardLayout, artic: Artic, session: Session): Environm
     for (const s of [-1, 1]) {
       lights.push({ pos: transformPoint(T, CAB_FRONT + 0.1, 1.0, s * 0.95), dir: norm(fwd), cosCut: 0.86, range: 55, colour: [1.3, 1.25, 1.1] });
     }
-    if (artic.gear === 'R' && session.state === 'driving') {
+    if (artic.coupled && artic.gear === 'R' && session.state === 'driving') {
       for (const s of [-1, 1]) {
         lights.push({ pos: transformPoint(K, T_REAR - 0.1, 1.0, s * 0.72), dir: norm(back), cosCut: 0.55, range: 26, colour: [0.95, 0.95, 0.9] });
       }

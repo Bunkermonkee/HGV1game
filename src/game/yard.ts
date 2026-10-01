@@ -76,7 +76,7 @@ export interface Conditions {
   visibility?: number;
 }
 
-export type TipTrigger = 'start' | 'reversing' | 'drift' | 'nearBay' | 'aligned' | 'shunt' | 'contact';
+export type TipTrigger = 'start' | 'reversing' | 'drift' | 'nearBay' | 'aligned' | 'shunt' | 'contact' | 'nearKingpin' | 'coupled';
 
 export interface TutorialTip {
   trigger: TipTrigger;
@@ -101,6 +101,12 @@ export interface YardLayout {
   stars: { three: StarTarget; two: StarTarget };
   conditions: Conditions;
   tutorial: TutorialTip[];
+  /**
+   * Pick-up levels: the tractor starts on its own here (rear axle centre,
+   * heading in degrees) and has to couple to the trailer, which stands at
+   * `spawn`, before delivering it.
+   */
+  pickup?: { tractor: { x: number; y: number; heading: number } };
 }
 
 /** Dock buffer geometry (bay frame: along = out of the bay, lateral = across). */

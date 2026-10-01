@@ -1,0 +1,32 @@
+{
+  "id": "14-wet-collection",
+  "name": "Wet Collection",
+  "brief": "Pouring down. Pick up your trailer, then get it onto Bay 5, blind side, in the murk.",
+  "width": 90,
+  "height": 50,
+  "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
+  "docks": [{ "x": 10, "y": 8, "along": 0, "heading": 90, "count": 12 }],
+  "targetBay": "5",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "4", "colour": "#3c6b44" },
+    { "kind": "trailer-in-bay", "bay": "7", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "11", "colour": "#8a3b2f" },
+    { "kind": "kerb", "x": 70, "y": 44, "length": 14, "width": 4 }
+  ],
+  "conditions": { "rain": true, "forwardGrip": 0.7, "visibility": 30 },
+  "spawn": { "x": 41.42, "y": 37.62, "heading": 357.1, "articulation": -5.9 },
+  "stars": { "three": { "shunts": 0, "time": 85 }, "two": { "shunts": 2, "time": 150 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 8 },
+    { "throttle": 1, "steer": -0.6, "dist": 17 },
+    { "throttle": 1, "steer": 0, "dist": 14 }
+  ],
+  "pickup": {
+    "driveOut": [
+      { "throttle": 1, "steer": 0, "dist": 10 },
+      { "throttle": 1, "steer": -0.5, "dist": 10 },
+      { "throttle": 1, "steer": 0, "dist": 4 }
+    ],
+    "tractor": { "x": 75.49, "y": 25.72, "heading": 303.8 }
+  }
+}

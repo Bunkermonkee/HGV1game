@@ -66,6 +66,12 @@ export interface LevelFile {
   tutorial?: TutorialTip[];
   /** Proof that the level is solvable: a drive OUT of the target bay to the spawn. */
   driveOut?: DriveMove[];
+  /**
+   * Pick-up level: the trailer stands at `spawn` and the tractor starts on
+   * its own at `tractor`. `driveOut` proves the coupling can be done: the
+   * tractor drives away from under the trailer, ending at `tractor`.
+   */
+  pickup?: { tractor?: { x: number; y: number; heading: number }; driveOut?: DriveMove[] };
 }
 
 const POD_DEPTH = 2.4;
@@ -128,5 +134,6 @@ export function parseLevel(file: LevelFile, number: number): YardLayout {
     stars: file.stars,
     conditions: file.conditions ?? {},
     tutorial: file.tutorial ?? [],
+    pickup: file.pickup ? { tractor: file.pickup.tractor ?? { x: file.spawn.x, y: file.spawn.y, heading: file.spawn.heading } } : undefined,
   };
 }

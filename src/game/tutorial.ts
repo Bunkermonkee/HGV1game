@@ -12,7 +12,11 @@ function fired(t: TipTrigger, s: Session): boolean {
     case 'reversing':
       return s.reverseDistance > 2;
     case 'drift':
-      return s.reverseDistance > 3 && Math.abs(s.artic.articulation) > 4 * DEG;
+      return s.artic.coupled && s.reverseDistance > 3 && Math.abs(s.artic.articulation) > 4 * DEG;
+    case 'nearKingpin':
+      return s.coupling.near && s.coupling.toKingpin < 4;
+    case 'coupled':
+      return s.artic.coupled && !!s.yard.pickup && s.couplingHold === 0;
     case 'nearBay':
       return s.bayCheck.near && s.bayCheck.rearGap < 8;
     case 'aligned':

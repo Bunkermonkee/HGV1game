@@ -1,0 +1,33 @@
+{
+  "id": "13-night-collection",
+  "name": "Night Collection",
+  "brief": "3am, lights out, and your trailer's parked out by the fence. Find it in your headlights, couple up, then get it onto Bay 6.",
+  "width": 90,
+  "height": 50,
+  "buildings": [{ "x": 0, "y": 0, "w": 90, "h": 8 }],
+  "docks": [{ "x": 30, "y": 8, "along": 0, "heading": 90, "count": 12 }],
+  "targetBay": "6",
+  "obstacles": [
+    { "kind": "trailer-in-bay", "bay": "5", "colour": "#6b6f76" },
+    { "kind": "trailer-in-bay", "bay": "9", "colour": "#8a3b2f" },
+    { "kind": "trailer-in-bay", "bay": "2", "colour": "#2f4f7a" },
+    { "kind": "bollard", "x": 8, "y": 44 },
+    { "kind": "cone", "x": 74, "y": 40 }
+  ],
+  "conditions": { "night": true },
+  "spawn": { "x": 37.32, "y": 37.73, "heading": 181.9, "articulation": 6.4 },
+  "stars": { "three": { "shunts": 0, "time": 80 }, "two": { "shunts": 2, "time": 140 } },
+  "driveOut": [
+    { "throttle": 1, "steer": 0, "dist": 8 },
+    { "throttle": 1, "steer": 0.6, "dist": 17 },
+    { "throttle": 1, "steer": 0, "dist": 14 }
+  ],
+  "pickup": {
+    "driveOut": [
+      { "throttle": 1, "steer": 0, "dist": 4 },
+      { "throttle": 1, "steer": 0.9, "dist": 9 },
+      { "throttle": 1, "steer": 0, "dist": 4 }
+    ],
+    "tractor": { "x": 14.49, "y": 26.19, "heading": 272.8 }
+  }
+}

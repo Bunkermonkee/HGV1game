@@ -61,11 +61,11 @@ function cutNightLights(ctx: CanvasRenderingContext2D, yard: YardLayout, artic: 
   glow(ctx, cx, cy, 3.4, 0.55);
 
   // Trailer: reversing lights, tail lights and amber side markers.
-  const h = artic.hitch;
+  const h = artic.kingpin;
   const ph = artic.trailerHeading;
   const [rx, ry] = local(h.x, h.y, ph, T_REAR, 0);
-  if (artic.gear === 'R' && !artic.jackknifed) beam(ctx, rx, ry, ph + Math.PI, 60 * DEG, 13, 0.95);
-  glow(ctx, rx, ry, 2.4, artic.braking || artic.handbrake ? 0.6 : 0.35);
+  if (artic.coupled && artic.gear === 'R' && !artic.jackknifed) beam(ctx, rx, ry, ph + Math.PI, 60 * DEG, 13, 0.95);
+  if (artic.coupled) glow(ctx, rx, ry, 2.4, artic.braking || artic.handbrake ? 0.6 : 0.35);
   for (let d = T_REAR + 1.5; d < TRAILER.kingpinSetback - 1; d += 3) {
     for (const side of [-1, 1]) {
       const [mx, my] = local(h.x, h.y, ph, d, side * (TRAILER.width / 2 + 0.1));

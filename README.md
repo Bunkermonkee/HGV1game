@@ -6,7 +6,7 @@ leaderboard is a small PHP + MySQL API.
 
 **Play it: <https://hgv1yardmaster.online>**
 
-> **Status: version 1.1.** 10 levels, a Daily Yard, night/rain, Pro-view
+> **Status: version 1.4.** 15 levels (5 with a trailer pick-up), a first-person view, a Daily Yard, night/rain, Pro-view
 > mirrors, touch and gamepad controls, synthesised sound, share card, and an
 > online leaderboard with verified replays. See [Deploying](#deploying),
 > [Leaderboard](#leaderboard-serverapi) and [Version 2 ideas](#version-2-ideas). The full
@@ -93,6 +93,11 @@ reloads.
 | 8 | Night Shift | Dark yard: headlights, reversing lights and dim dock lamps only |
 | 9 | Wet Wednesday | Rain: fog, and 70% grip on forward pull-ups |
 | 10 | The Monday Morning | Tight, blind side, trailers both sides, tough targets |
+| 11 | Pick-Up | **Pick-up:** couple to the trailer first (straight back under it), then a straight delivery |
+| 12 | Trailer Park | Pick-up from a row of parked trailers, then 90° sight side |
+| 13 | Night Collection | Pick-up by the fence in the dark, then sight side |
+| 14 | Wet Collection | Pick-up in the rain and fog, then blind side |
+| 15 | Monday Collection | Cramped pick-up, then blind side with a shunt |
 
 Levels unlock one at a time; stars and best times are saved per level.
 For testing, add `#unlock-all` (or `#unlockall`) to the end of the URL to
@@ -122,6 +127,11 @@ rebuild; no code changes are needed. The main fields:
 - `driveOut` – a list of `{ throttle: 1 | -1, steer: -1…1, dist: metres }`
   moves that drive the rig OUT of the bay. This is the level's proof that it
   can be solved.
+- `pickup` (pick-up levels) – `{ driveOut, tractor }`. The trailer stands
+  on its legs at `spawn`, and the tractor starts on its own at `tractor`
+  (rear axle centre and heading). `pickup.driveOut` proves the coupling:
+  starting coupled-position under the trailer, the tractor drives away along
+  those moves, and `--write` sets `tractor` to where it ends.
 
 Then run:
 
@@ -135,6 +145,28 @@ fails the level if anything is touched. The vehicle model is
 time-reversible, so a clean drive-out proves the reverse-in exists, and
 `--write` puts the truck where the drive-out ends. It also prints the
 route length and shunts as a guide for star targets. (Needs Node 22.6+.)
+
+## Picking up a trailer (levels 11–15)
+
+The tractor starts on its own ("SOLO" on the gauge) and the trailer stands
+on its landing legs, with an orange cross over the kingpin.
+
+- **Coupling:** reverse the tractor under the trailer's front until the fifth
+  wheel meets the kingpin. It locks on if the fifth wheel is within 0.25 m of
+  the kingpin sideways, the tractor is within 8° of the trailer's line, and
+  you're doing 1.5 mph or less (`RULES.coupling`). A **coupling guide**
+  (angle, off centre, distance to the kingpin) appears as you get close.
+- **Then** there's a 1.5 s pause while the jaws lock, the air lines go on and
+  the legs wind up, and from there it's a normal delivery.
+- **Getting it wrong:** missing the pin or going too fast stops you against
+  it with a contact (and tells you why); hitting it at 2.5 mph or more is a
+  heavy contact. The trailer's body stands above the tractor's chassis, so
+  only the cab can hit it; the chassis can hit the landing legs and bogie.
+- **Scoring:** the clock and shunts run across the whole job. Pulling away
+  after coupling isn't counted as a shunt.
+- **Proof:** `npm run check-levels` proves both halves: the delivery (as for
+  every level) and the coupling (`pickup.driveOut`). It also checks the
+  trailer is left within the coupling angle.
 
 ## First person view (`src/render3d/`)
 
@@ -214,11 +246,11 @@ scanner), on MySQL 5.7+/8 or MariaDB.
 
 - **Boards:** each level and the Daily Yard, **This week** (resets Monday
   00:00 UK time) and **All time**, plus an **Overall** board for drivers who
-  have finished all 10 yards. Ranking: stars, then total time with penalties,
+  have finished every yard (all 15). Ranking: stars, then total time with penalties,
   then fewest shunts. Each driver keeps two entries per board: their best
   **overhead** run and their best **first-person** run (marked **(FP)**). On
   the Overall board the two views are added up separately, and a driver
-  appears in a view once they've finished all 10 yards in it.
+  appears in a view once they've finished every yard in it.
 - **Players:** a display name only, chosen the first time they post; after
   that runs post automatically. The game stores a random player id in the
   browser. No email, no accounts, no tracking cookies.

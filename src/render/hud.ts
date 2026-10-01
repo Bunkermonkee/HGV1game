@@ -68,7 +68,13 @@ export function drawHud(ctx: CanvasRenderingContext2D, artic: Artic, viewW: numb
   }
 
   const gx = compact ? 186 : 276;
-  drawArticulationGauge(ctx, gx, 50, artic.articulation);
+  if (artic.coupled) {
+    drawArticulationGauge(ctx, gx, 50, artic.articulation);
+  } else {
+    ctx.font = `900 18px ${theme.uiFontDisplay}`;
+    ctx.fillStyle = theme.uiWarn;
+    ctx.fillText('SOLO', gx, 46);
+  }
   ctx.font = `600 11px ${theme.uiFont}`;
   ctx.fillStyle = '#b7bec9';
   ctx.fillText('TRAILER', gx, 92);
@@ -223,6 +229,46 @@ export interface BayGuide {
 }
 
 /** Live alignment read-out once the trailer is at the bay. */
+/** Live read-out while reversing the tractor under its trailer (pick-up levels). */
+export function drawCouplingGuide(
+  ctx: CanvasRenderingContext2D,
+  g: { toKingpin: number; lateral: number; angleErr: number; lateralOk: boolean; angleOk: boolean },
+  viewW: number,
+  top: number,
+): void {
+  drawGuidePills(ctx, viewW, top, [
+    ['ANGLE', `${Math.abs(g.angleErr).toFixed(1)}°`, g.angleOk],
+    ['OFF CENTRE', `${Math.abs(g.lateral).toFixed(2)} m`, g.lateralOk],
+    ['TO KINGPIN', `${g.toKingpin.toFixed(1)} m`, g.toKingpin < 0.5],
+  ]);
+}
+
+function drawGuidePills(ctx: CanvasRenderingContext2D, viewW: number, top: number, items: [string, string, boolean][]): void {
+  const s = Math.min(1.15, Math.max(0.8, viewW / 900));
+  const w = 300;
+  const h = 50;
+  ctx.save();
+  ctx.translate(viewW / 2 - (w * s) / 2, top + 6);
+  ctx.scale(s, s);
+  panel(ctx, 0, 0, w, h);
+  items.forEach(([label, value, ok], i) => {
+    const x = 6 + i * 98;
+    ctx.fillStyle = ok ? 'rgba(46,204,113,0.22)' : 'rgba(255,176,0,0.18)';
+    ctx.beginPath();
+    ctx.roundRect(x, 6, 92, 38, 8);
+    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `800 15px ${theme.uiFont}`;
+    ctx.fillStyle = ok ? theme.uiGood : theme.uiWarn;
+    ctx.fillText(value, x + 46, 19);
+    ctx.font = `600 9px ${theme.uiFont}`;
+    ctx.fillStyle = '#d0d5dc';
+    ctx.fillText(label, x + 46, 35);
+  });
+  ctx.restore();
+}
+
 export function drawBayGuide(ctx: CanvasRenderingContext2D, g: BayGuide, viewW: number, top: number, bayLabel: string): void {
   const s = Math.min(1.15, Math.max(0.8, viewW / 900));
   const w = 300;

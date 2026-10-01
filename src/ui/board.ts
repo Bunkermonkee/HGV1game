@@ -2,6 +2,9 @@
 import { getPlayer, savePlayer } from '../game/storage.ts';
 import { errorText, leaderboard, type Board, type BoardEntry, type Period } from '../net/leaderboard.ts';
 import { formatTime } from '../render/hud.ts';
+import { LEVELS } from '../levels/index.ts';
+
+const LEVEL_COUNT = LEVELS.length;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -135,7 +138,7 @@ async function load(): Promise<void> {
   note.textContent = daily
     ? "Today's yard only – there's a new one tomorrow."
     : overall
-      ? 'Total stars across all 10 yards (time breaks ties), overhead and first person (FP) counted separately. You appear once you have finished every yard in that view.'
+      ? `Total stars across all ${LEVEL_COUNT} yards (time breaks ties), overhead and first person (FP) counted separately. You appear once you have finished every yard in that view.`
       : p === 'week'
         ? 'Best overhead and best first-person (FP) run per driver this week. Resets on Monday at midnight.'
         : 'Best overhead and best first-person (FP) run per driver, ever.';

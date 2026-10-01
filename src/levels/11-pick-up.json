@@ -1,0 +1,48 @@
+{
+  "id": "11-pick-up",
+  "name": "Pick-Up",
+  "brief": "Your trailer's waiting in the yard. Back the tractor under it, couple up, then reverse it onto Bay 3.",
+  "width": 60,
+  "height": 72,
+  "buildings": [{ "x": 0, "y": 0, "w": 60, "h": 8 }],
+  "docks": [{ "x": 18.6, "y": 8, "along": 0, "heading": 90, "count": 6 }],
+  "targetBay": "3",
+  "markings": [{ "kind": "text", "x": 48, "y": 62, "text": "SLOW", "size": 2.2 }],
+  "spawn": { "x": 28.1, "y": 29.93, "heading": 90, "articulation": 0 },
+  "stars": { "three": { "shunts": 0, "time": 60 }, "two": { "shunts": 2, "time": 110 } },
+  "tutorial": [
+    {
+      "trigger": "start",
+      "text": "Your trailer's parked behind you. Reverse the tractor slowly under it – the fifth wheel has to meet the kingpin (the orange cross on the trailer). Hold {reverse}."
+    },
+    {
+      "trigger": "nearKingpin",
+      "text": "Nearly under. Keep it straight and slow – under 1.5 mph. The guide shows the distance to the kingpin and how far off centre you are."
+    },
+    {
+      "trigger": "coupled",
+      "text": "Coupled! Air lines on, legs up. Now reverse the trailer onto Bay 3 – watch the trailer, not the cab."
+    },
+    {
+      "trigger": "drift",
+      "text": "Trailer drifting off line? Steer towards the side it's drifting to, then centre the wheel as it comes back."
+    },
+    {
+      "trigger": "nearBay",
+      "text": "Nearly there. Ease off and touch the buffers at walking pace – under 2 mph."
+    },
+    {
+      "trigger": "aligned",
+      "text": "All three checks are green. Stop and press {handbrake} to put the handbrake on."
+    },
+    {
+      "trigger": "contact",
+      "text": "Contact! Each bump adds 5 seconds. Anything at 2.5 mph or more and it's game over."
+    }
+  ],
+  "driveOut": [{ "throttle": 1, "steer": 0, "dist": 20 }],
+  "pickup": {
+    "driveOut": [{ "throttle": 1, "steer": 0, "dist": 10 }],
+    "tractor": { "x": 28.1, "y": 53.45, "heading": 90 }
+  }
+}

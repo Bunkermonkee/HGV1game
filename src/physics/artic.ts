@@ -17,6 +17,10 @@
  * The articulation (hitch) angle is φ = θ − ψ. Reversing makes φ = 0 an
  * unstable equilibrium, which is exactly why the trailer swings the opposite
  * way to the steering and has to be "caught" – just like the real thing.
+ *
+ * Uncoupled ("bobtail"): the tractor drives alone and the trailer stands on
+ * its landing legs with its kingpin at `kingpin`; `trailerHeading` is then
+ * the parked trailer's heading and doesn't change.
  */
 import { ARTICULATION, SPEED, STEERING, TRACTOR, TRAILER } from '../config/vehicle.ts';
 import { DEG, MPH_TO_MS, approach, clamp, wrapAngle, type Vec2 } from '../core/math.ts';
@@ -55,6 +59,7 @@ export interface ArticSnapshot {
   trailerHeading: number;
   speed: number;
   jackknifed: boolean;
+  coupled?: boolean;
 }
 
 const L1 = TRACTOR.wheelbase;
@@ -83,6 +88,10 @@ export class Artic {
   braking = false;
   /** Set when the driver presses a pedal with the handbrake on. */
   handbrakeNag = false;
+  /** Trailer hitched to the fifth wheel. False while picking the trailer up. */
+  coupled = true;
+  /** Where the parked trailer's kingpin is while uncoupled. */
+  private parkedKingpin: Vec2 = { x: 0, y: 0 };
 
   conditions: Conditions = DEFAULT_CONDITIONS;
 
@@ -100,7 +109,23 @@ export class Artic {
     this.jackknifed = false;
     this.braking = false;
     this.handbrakeNag = false;
+    this.coupled = true;
     this.events.length = 0;
+  }
+
+  /** Leave the trailer standing with its kingpin at `kingpin` (heading = trailerHeading). */
+  uncouple(kingpin: Vec2): void {
+    this.coupled = false;
+    this.parkedKingpin = { x: kingpin.x, y: kingpin.y };
+  }
+
+  /** Hitch the parked trailer: the tractor is moved by the small offset so the fifth wheel meets the kingpin. */
+  couple(): void {
+    const h = this.hitch;
+    this.x += this.parkedKingpin.x - h.x;
+    this.y += this.parkedKingpin.y - h.y;
+    this.coupled = true;
+    this.speed = 0;
   }
 
   /**
@@ -134,6 +159,7 @@ export class Artic {
       trailerHeading: this.trailerHeading,
       speed: this.speed,
       jackknifed: this.jackknifed,
+      coupled: this.coupled,
     };
   }
 
@@ -161,6 +187,7 @@ export class Artic {
     this.updateSteering(dt, input);
     this.updateSpeed(dt, input);
     this.integrate(dt);
+    if (!this.coupled) return;
 
     const phi = this.articulation;
     // A jackknife only counts when reversing: pulling forward on full lock can
@@ -176,7 +203,7 @@ export class Artic {
 
   /** Articulated past the jackknife angle (only allowed while going forwards). */
   get overArticulated(): boolean {
-    return Math.abs(this.articulation) > ARTICULATION.jackknifeAngle * DEG;
+    return this.coupled && Math.abs(this.articulation) > ARTICULATION.jackknifeAngle * DEG;
   }
 
   private updateSteering(dt: number, input: DriveInput): void {
@@ -235,7 +262,7 @@ export class Artic {
     const theta = this.heading;
     const phi = theta - this.trailerHeading;
     const yawRate = (v * Math.tan(this.steer)) / L1;
-    const trailerYawRate = (v * Math.sin(phi) + A * yawRate * Math.cos(phi)) / L2;
+    const trailerYawRate = this.coupled ? (v * Math.sin(phi) + A * yawRate * Math.cos(phi)) / L2 : 0;
 
     // Midpoint heading for the translation keeps arcs accurate at any step size.
     const midTheta = theta + yawRate * dt * 0.5;
@@ -262,9 +289,14 @@ export class Artic {
     };
   }
 
+  /** The trailer's kingpin: on the fifth wheel when coupled, else where it's parked. */
+  get kingpin(): Vec2 {
+    return this.coupled ? this.hitch : { ...this.parkedKingpin };
+  }
+
   /** Centre of the trailer bogie (the trailer's effective pivot). */
   get trailerAxle(): Vec2 {
-    const h = this.hitch;
+    const h = this.kingpin;
     return {
       x: h.x - Math.cos(this.trailerHeading) * L2,
       y: h.y - Math.sin(this.trailerHeading) * L2,
@@ -273,7 +305,7 @@ export class Artic {
 
   /** Centre of the trailer's rear edge. */
   get trailerRear(): Vec2 {
-    const h = this.hitch;
+    const h = this.kingpin;
     const d = TRAILER.length - TRAILER.kingpinSetback;
     return {
       x: h.x - Math.cos(this.trailerHeading) * d,
@@ -291,9 +323,19 @@ export class Artic {
     );
   }
 
+  /** The cab: the part of the tractor that stands as high as the trailer body. */
+  get cabBox(): OBB {
+    return obbFromFrame(this, this.heading, L1 + TRACTOR.frontOverhang - TRACTOR.cabLength, L1 + TRACTOR.frontOverhang, TRACTOR.width / 2);
+  }
+
+  /** Chassis behind the cab: low enough to go under a trailer's front. */
+  get chassisBox(): OBB {
+    return obbFromFrame(this, this.heading, -TRACTOR.rearOverhang, L1 + TRACTOR.frontOverhang - TRACTOR.cabLength, TRACTOR.width / 2);
+  }
+
   get trailerBox(): OBB {
     return obbFromFrame(
-      this.hitch,
+      this.kingpin,
       this.trailerHeading,
       -(TRAILER.length - TRAILER.kingpinSetback),
       TRAILER.kingpinSetback,

@@ -5,7 +5,8 @@
  */
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SPEED } from '../src/config/vehicle.ts';
+import { RULES } from '../src/config/rules.ts';
+import { SPEED, TRACTOR, TRAILER } from '../src/config/vehicle.ts';
 import { DEG, MPH_TO_MS } from '../src/core/math.ts';
 import { BUFFER } from '../src/game/yard.ts';
 import { parseLevel, type LevelFile } from '../src/levels/parse.ts';
@@ -32,7 +33,18 @@ const meta = readdirSync(levelDir)
     const gap = bay.buffers ? BUFFER.depth : 0;
     // The trailer's rear has to cover at least the straight-line distance to
     // the buffers, and nothing moves faster than the forward speed limit.
-    const dist = Math.hypot(level.spawn.x - (bay.x + Math.cos(a) * gap), level.spawn.y - (bay.y + Math.sin(a) * gap));
+    let dist = Math.hypot(level.spawn.x - (bay.x + Math.cos(a) * gap), level.spawn.y - (bay.y + Math.sin(a) * gap));
+    if (level.pickup) {
+      // Pick-up: the fifth wheel first has to reach the kingpin, plus the coupling-up pause.
+      const h = level.spawn.heading * DEG;
+      const toKingpin = TRAILER.length - TRAILER.kingpinSetback;
+      const kx = level.spawn.x + Math.cos(h) * toKingpin;
+      const ky = level.spawn.y + Math.sin(h) * toKingpin;
+      const t = level.pickup.tractor;
+      const th = t.heading * DEG;
+      dist += Math.hypot(kx - (t.x + Math.cos(th) * TRACTOR.fifthWheelAhead), ky - (t.y + Math.sin(th) * TRACTOR.fifthWheelAhead));
+      dist += RULES.coupling.holdSeconds * vmax;
+    }
     return { id: level.id, name: `${level.number}. ${level.name}`, stars: level.stars, minTimeMs: Math.floor((dist / vmax) * 1000) };
   });
 writeFileSync(join(out, 'levels.json'), JSON.stringify(meta, null, 2) + '\n');

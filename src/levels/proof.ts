@@ -98,3 +98,48 @@ export function runDriveOut(yard: YardLayout, moves: DriveMove[], margin = 0): P
     shunts: playerShunts(moves),
   };
 }
+
+export interface SoloProofResult {
+  ok: boolean;
+  /** Where the tractor ended: rear axle centre and heading (degrees). */
+  end: { x: number; y: number; heading: number };
+  pathLength: number;
+  shunts: number;
+  problem?: string;
+}
+
+/**
+ * Pick-up levels: prove the coupling can be done. The tractor starts coupled
+ * position under the parked trailer (uncoupled) and drives away along
+ * `moves`; the kinematics are time-reversible, so reversing that route puts
+ * the fifth wheel on the kingpin. Where it ends is the tractor's start.
+ */
+export function runSoloDriveOut(yard: YardLayout, moves: DriveMove[]): SoloProofResult {
+  const s = new Session(yard);
+  s.recording = false;
+  s.reset();
+  s.placeTractorUnderTrailer();
+  const fail = (problem: string): SoloProofResult => ({ ok: false, end: { x: 0, y: 0, heading: 0 }, pathLength: 0, shunts: 0, problem });
+  let pathLength = 0;
+  const legs: (DriveMove | null)[] = [...moves, null];
+  for (const m of legs) {
+    if (!m && !s.artic.handbrake) s.toggleHandbrake();
+    const input = quantize({ steerMode: 'absolute', steer: m ? m.steer : moves[moves.length - 1].steer, throttle: m ? m.throttle : 0 });
+    let d = 0;
+    for (let t = 0; t < 120; t += DT) {
+      s.step(input);
+      d += Math.abs(s.artic.speed) * DT;
+      const ev = s.takeEvents().find((e) => e.type === 'fail' || e.type === 'contact' || e.type === 'coupled');
+      if (s.state !== 'driving' || ev) return fail(`solo drive-out hit trouble: ${JSON.stringify(ev)}`);
+      if (m ? d >= m.dist : s.artic.stopped) break;
+    }
+    pathLength += d;
+  }
+  const a = s.artic;
+  return {
+    ok: true,
+    end: { x: +a.x.toFixed(2), y: +a.y.toFixed(2), heading: +((a.heading / DEG + 360) % 360).toFixed(1) },
+    pathLength,
+    shunts: playerShunts(moves),
+  };
+}

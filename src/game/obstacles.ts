@@ -17,6 +17,8 @@ export interface Obstacle {
   colour?: string;
   /** Part of a building (drawn with the yard, not as an obstacle). */
   building?: boolean;
+  /** Name for messages when more specific than the kind's. */
+  label?: string;
 }
 
 /** What the driver hit, for the fail message. */

@@ -25,7 +25,7 @@ import { DebugOverlay } from './render/debug.ts';
 import { drawObstacles } from './render/draw-obstacles.ts';
 import { drawArtic } from './render/draw-vehicle.ts';
 import { drawYard } from './render/draw-yard.ts';
-import { banner, drawBayGuide, drawHud, drawRunStats, drawTip, hudHeight, Toasts } from './render/hud.ts';
+import { banner, drawBayGuide, drawCouplingGuide, drawHud, drawRunStats, drawTip, hudHeight, Toasts } from './render/hud.ts';
 import { Mirrors } from './render/mirrors.ts';
 import { drawCabWheel, drawMirrorFrames, mirrorRects } from './render/cab-overlay.ts';
 import { FirstPerson } from './render3d/first-person.ts';
@@ -385,6 +385,11 @@ function handleEvent(e: SessionEvent): void {
     case 'buffers':
       toasts.show('On the buffers', theme.uiGood, 1.4);
       break;
+    case 'coupled':
+      sound.bump();
+      sound.airBrake(false);
+      toasts.show(`Coupled – air lines on, legs up. Take it to Bay ${session.bay.label}`, theme.uiGood, 3.5);
+      break;
     case 'message':
       toasts.show(e.text, theme.uiWarn, 3);
       break;
@@ -420,7 +425,7 @@ function handleEvent(e: SessionEvent): void {
 
 function boardChoices(): BoardChoice[] {
   return [
-    { id: 'overall', name: 'Overall – all 10 yards' },
+    { id: 'overall', name: `Overall – all ${LEVELS.length} yards` },
     { id: dailyId(), name: `Daily Yard – today (${dailyLabel(ukDate())})` },
     ...LEVELS.map((l) => ({ id: l.id, name: `${l.number}. ${l.name}` })),
   ];
@@ -653,12 +658,9 @@ function updateCamera(dt: number, snap = false): void {
   const focus = { x: lerp(mid.x, r.x, 0.45 * lookBehind), y: lerp(mid.y, r.y, 0.45 * lookBehind) };
 
   const a = bay.heading * DEG;
-  const pts: Vec2[] = [
-    ...obbCorners(artic.tractorBox),
-    ...obbCorners(artic.trailerBox),
-    { x: bay.x, y: bay.y },
-    { x: bay.x + Math.cos(a) * bay.length, y: bay.y + Math.sin(a) * bay.length },
-  ];
+  const pts: Vec2[] = [...obbCorners(artic.tractorBox), ...obbCorners(artic.trailerBox)];
+  // Picking up: frame the tractor and its trailer; the bay comes into the picture once coupled.
+  if (artic.coupled) pts.push({ x: bay.x, y: bay.y }, { x: bay.x + Math.cos(a) * bay.length, y: bay.y + Math.sin(a) * bay.length });
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -813,6 +815,10 @@ function renderFrame(dt: number): void {
     drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
     guideBottom = statsBottom + 70;
   }
+  if (session.state === 'driving' && session.coupling.near) {
+    drawCouplingGuide(ctx, session.coupling, viewW, statsBottom);
+    guideBottom = statsBottom + 70;
+  }
   if (compact) {
     // Touch: tip between the wheel and the pedals; mirrors between the top
     // HUD and the controls.
@@ -858,6 +864,10 @@ function renderFirstPerson(fpv: FirstPerson, dt: number): void {
     let guideBottom = statsBottom;
     if (session.state === 'driving' && session.bayCheck.near) {
       drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
+      guideBottom = statsBottom + 70;
+    }
+    if (session.state === 'driving' && session.coupling.near) {
+      drawCouplingGuide(ctx, session.coupling, viewW, statsBottom);
       guideBottom = statsBottom + 70;
     }
     if (compact) {

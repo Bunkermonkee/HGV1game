@@ -101,6 +101,7 @@ function starsMarkup(n: number): string {
 
 function tagsFor(level: YardLayout): string[] {
   const t: string[] = [];
+  if (level.pickup) t.push('Pick-up');
   if (level.conditions.night) t.push('Night');
   if (level.conditions.rain) t.push('Rain');
   if (level.tutorial.length) t.push('Tutorial');

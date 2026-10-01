@@ -14,10 +14,11 @@
  */
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { RULES } from '../src/config/rules.ts';
 import { ARTICULATION } from '../src/config/vehicle.ts';
 import { Session } from '../src/game/session.ts';
 import { parseLevel, type LevelFile } from '../src/levels/parse.ts';
-import { parkOnBay, rigOverlaps, runDriveOut } from '../src/levels/proof.ts';
+import { parkOnBay, rigOverlaps, runDriveOut, runSoloDriveOut } from '../src/levels/proof.ts';
 
 const DIR = join(import.meta.dirname, '../src/levels');
 const WRITE = process.argv.includes('--write');
@@ -89,11 +90,37 @@ files.forEach((name, i) => {
       } else if (dPos > POS_TOL || dHead > ANGLE_TOL || dArt > ANGLE_TOL) {
         problems.push(`drive-out ends at ${JSON.stringify(end)}, not the spawn`);
       }
+      // Pick-up level: the trailer stands at the spawn; prove the tractor can get under it.
+      let soloLength = 0;
+      let soloShunts = 0;
+      if (file.pickup && Math.abs(end.articulation ?? 0) > RULES.coupling.maxAngle) {
+        problems.push(`the trailer is left at ${end.articulation}° to the tractor – more than coupling allows (${RULES.coupling.maxAngle}°)`);
+      }
+      if (file.pickup) {
+        const solo = file.pickup.driveOut?.length ? runSoloDriveOut(parseLevel(file, i + 1), file.pickup.driveOut) : null;
+        if (!solo) problems.push('pick-up level has no pickup.driveOut proof');
+        else if (!solo.ok) problems.push(solo.problem ?? 'solo drive-out failed');
+        else {
+          const t = file.pickup.tractor;
+          if (WRITE) {
+            file.pickup.tractor = solo.end;
+            writeFileSync(path, pretty(file) + '\n');
+            notes.push(`tractor start written: ${JSON.stringify(solo.end)}`);
+          } else if (!t || Math.hypot(solo.end.x - t.x, solo.end.y - t.y) > POS_TOL || Math.abs(((solo.end.heading - t.heading + 540) % 360) - 180) > ANGLE_TOL) {
+            problems.push(`solo drive-out ends at ${JSON.stringify(solo.end)}, not pickup.tractor`);
+          }
+          soloLength = solo.pathLength;
+          soloShunts = solo.shunts;
+          notes.push(`coupling route ${solo.pathLength.toFixed(0)} m, ${solo.shunts} shunt(s)`);
+        }
+      }
       if (Math.abs(end.articulation ?? 0) > ARTICULATION.warnAngle) notes.push('spawn articulation is large');
       // Reversing is slower than the drive-out and needs corrections: rough guide only.
-      const est = proof.pathLength / 1.2 + 6 * (proof.shunts + 1);
+      // Coupling: reverse slowly under the trailer (≈ walking pace at the end), plus the coupling-up pause.
+      const pick = file.pickup ? soloLength / 1.2 + 10 + 6 * soloShunts : 0;
+      const est = proof.pathLength / 1.2 + 6 * (proof.shunts + 1) + pick;
       notes.push(
-        `route ${proof.pathLength.toFixed(0)} m, ${proof.shunts} shunt(s); rough 3★ time ≈ ${Math.ceil(est / 5) * 5}s` +
+        `route ${proof.pathLength.toFixed(0)} m, ${proof.shunts + soloShunts} shunt(s); rough 3★ time ≈ ${Math.ceil(est / 5) * 5}s` +
           ` (level says ${file.stars.three.time}s / ${file.stars.three.shunts} shunts)`,
       );
     }

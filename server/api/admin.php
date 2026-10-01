@@ -89,7 +89,7 @@ if (($_GET['do'] ?? '') === 'csv') {
     header('Content-Disposition: attachment; filename="yardmaster-winners-' . $week . '.csv"');
     $out = fopen('php://output', 'w');
     fputcsv($out, ['Week starting', 'Board', 'Position', 'Name', 'Stars', 'Time', 'Shunts', 'Contacts'], ',', '"', '\\');
-    $boards = array_merge(['overall' => ['name' => 'Overall (all 10 yards)']], $levels);
+    $boards = array_merge(['overall' => ['name' => 'Overall (all ' . count($levels) . ' yards)']], $levels);
     foreach ($boards as $lid => $l) {
         foreach (array_slice(ym_board($lid, $week, null)['entries'], 0, 3) as $e) {
             fputcsv($out, [$week, $l['name'], $e['pos'], $e['name'], $e['stars'], fmt_ms($e['totalMs']), $e['shunts'], $e['contacts']], ',', '"', '\\');
