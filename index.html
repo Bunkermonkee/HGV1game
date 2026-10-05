@@ -8,6 +8,11 @@
     <!-- brand:start (left out of neutral preview builds – see vite.config.ts) -->
     <link rel="icon" type="image/png" href="/brand/favicon.png" />
     <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Yard Master" />
     <meta name="description" content="Can you reverse a 13.6 m artic onto the bay? A free HGV reversing game from HGV1 Radio – 15 yards, a Daily Yard and a weekly leaderboard." />
     <link rel="canonical" href="https://hgv1yardmaster.online" />
     <meta property="og:type" content="website" />
@@ -277,6 +282,20 @@
           <p id="fail-reason"></p>
           <button id="btn-retry" class="btn primary" type="button">Try again</button>
           <button id="btn-fail-levels" class="btn" type="button">Level select</button>
+        </div>
+      </div>
+
+      <div id="homescreen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="homescreen-title">
+        <div class="card homescreen-card">
+          <h1 id="homescreen-title">Play full screen</h1>
+          <p>iPhone's browser can't put a game full screen, but you can add Yard Master to your home screen. Opened from there, it fills the whole screen with no browser bars.</p>
+          <ol>
+            <li>Tap the <strong>Share</strong> button <svg class="share-glyph" viewBox="0 0 20 24" aria-label="Share icon"><path d="M10 2v13M5.5 6.5 10 2l4.5 4.5M4 10H2v12h16V10h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg> in Safari's toolbar.</li>
+            <li>Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+            <li>Open <strong>Yard Master</strong> from your home screen.</li>
+          </ol>
+          <p>Your stars are saved separately there, so use <em>Playing on more than one device?</em> on the leaderboard to keep your scores together.</p>
+          <button id="homescreen-close" class="btn primary" type="button">Got it</button>
         </div>
       </div>
 

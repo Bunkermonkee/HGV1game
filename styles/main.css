@@ -1,4 +1,11 @@
 * { box-sizing: border-box; }
+html {
+  /* iPhone Safari enlarges text in landscape unless told not to. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+/* No double-tap zoom anywhere (the game canvas and controls use touch-action: none). */
+html, body, button, select, a, label { touch-action: manipulation; }
 html, body {
   margin: 0;
   height: 100%;
@@ -14,9 +21,13 @@ html, body {
 #app { position: fixed; inset: 0; }
 #game, #game3d {
   position: absolute;
-  inset: 0;
+  /* Keep the HUD clear of an iPhone's notch when held sideways. */
+  top: 0;
+  bottom: 0;
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
   display: block;
-  width: 100%;
+  width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   height: 100%;
   outline: none;
   touch-action: none;
@@ -544,3 +555,32 @@ html, body {
 #link-input { font: 800 20px var(--ui-font); letter-spacing: 0.1em; text-transform: uppercase; width: 9.5em; padding: 8px 10px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.25); background: var(--ui-panel); color: var(--ui-text); }
 #link-input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .link-msg { margin: 0; min-height: 1.3em; font-size: 14px; color: var(--ui-text-muted); }
+
+/* iPhone: how to play full screen (Add to Home Screen). */
+#homescreen { z-index: 20; padding: 8px 16px; }
+.homescreen-card {
+  max-width: min(440px, calc(100vw - 32px));
+  max-height: 100%;
+  overflow-y: auto;
+  text-align: left;
+  background: var(--ui-panel);
+}
+/* Phone held sideways: two columns so it all fits without scrolling. */
+@media (max-height: 520px) {
+  .homescreen-card {
+    max-width: min(760px, calc(100vw - 32px));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 22px;
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+  .homescreen-card h1 { grid-column: 1 / -1; margin: 0; font-size: 22px; }
+  .homescreen-card ol { grid-column: 2; grid-row: 2 / span 2; gap: 6px; }
+  .homescreen-card p { font-size: 14px; }
+  .homescreen-card .btn { grid-column: 1 / -1; min-height: 42px; }
+}
+.homescreen-card h1 { text-align: center; }
+.homescreen-card ol { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
+.homescreen-card p { margin: 0; color: var(--ui-text-muted); line-height: 1.45; font-size: 15px; }
+.share-glyph { display: inline-block; width: 1.1em; height: 1.25em; vertical-align: -0.2em; }

@@ -10,6 +10,7 @@ import { GamepadInput, moveFocus, PAD } from './core/gamepad.ts';
 import { Keyboard } from './core/input.ts';
 import { DEG, MPH_TO_MS, damp, lerp, wrapAngle, type Vec2 } from './core/math.ts';
 import { TouchControls } from './core/touch.ts';
+import { fullscreenMode, installZoomGuard, toggleFullscreenApi } from './core/ios.ts';
 import { quantize, ReplayPlayer, STEP } from './game/replay.ts';
 import { Session, type RunResult, type SessionEvent } from './game/session.ts';
 import { loadSave, recordResult, saveSettings, type View } from './game/storage.ts';
@@ -188,27 +189,43 @@ function controlLabels() {
   return touch.active ? LABELS.touch : gamepad.active ? LABELS.gamepad : LABELS.keyboard;
 }
 
-/** Portrait on a touch device (also inside a landscape-shaped iframe on a portrait phone). */
+/**
+ * Portrait on a touch device. Opened directly, the window's own shape says;
+ * embedded in a page, the iframe can be landscape-shaped on a portrait phone,
+ * so the screen's orientation decides.
+ */
 function portraitPhone(): boolean {
   if (!touch.active) return false;
+  const embedded = window.self !== window.top;
   const type = screen.orientation?.type;
-  return type ? type.startsWith('portrait') : window.innerHeight > window.innerWidth;
+  if (embedded && type) return type.startsWith('portrait');
+  return window.innerHeight > window.innerWidth;
 }
 
+const homescreenEl = document.getElementById('homescreen')!;
+
 function toggleFullscreen(): void {
-  if (document.fullscreenElement) {
-    void document.exitFullscreen().catch(() => {});
+  if (fullscreenMode() === 'homescreen') {
+    // iPhone: no full screen for web pages – show how to add it to the home screen instead.
+    pausedForGuide = mode === 'play' && !paused && !isScreenOpen();
+    if (pausedForGuide) setPaused(true);
+    homescreenEl.classList.remove('hidden');
+    document.getElementById('homescreen-close')!.focus();
     return;
   }
-  document.documentElement
-    .requestFullscreen()
-    .then(() => {
-      // Android Chrome can then hold landscape; elsewhere this just fails quietly.
-      const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
-      return o.lock?.('landscape');
-    })
-    .catch(() => {});
+  toggleFullscreenApi(() => {
+    // Android Chrome can then hold landscape; elsewhere this just fails quietly.
+    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    o.lock?.('landscape').catch(() => {});
+  });
 }
+let pausedForGuide = false;
+document.getElementById('homescreen-close')!.addEventListener('click', () => {
+  homescreenEl.classList.add('hidden');
+  if (pausedForGuide) setPaused(false);
+  pausedForGuide = false;
+});
+installZoomGuard();
 
 function resize(): void {
   // Cap DPR at 2: sharper than that costs fill-rate on phones for no visible gain.

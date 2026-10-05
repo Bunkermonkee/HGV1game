@@ -55,6 +55,13 @@ Touch mode switches on automatically on touch devices.
   landscape-shaped iframe on a portrait phone.
 - **HUD:** the gauges move to a compact panel top-left, and tutorial tips
   name the on-screen controls.
+- **iPhone:** Safari won't let a web page go full screen, so the ⛶ button
+  shows how to **Add to Home Screen** instead; opened from there the game runs
+  with no browser bars (`public/manifest.webmanifest`, `apple-mobile-web-app-*`
+  tags). Pinch and double-tap zoom are blocked while the page is at normal
+  size (a zoomed page can still be pinched back out and is reset after a
+  rotation), Safari's landscape text enlarging is switched off, and the game
+  picture stays clear of the notch (`src/core/ios.ts`).
 
 ### Gamepad (standard mapping – Xbox / PlayStation)
 

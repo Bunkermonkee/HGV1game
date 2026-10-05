@@ -3,6 +3,7 @@
  * reverse pedals, a handbrake button, plus pause / full-screen buttons.
  * Each control tracks its own pointer, so steering and pedals work together.
  */
+import { fullscreenMode } from './ios.ts';
 import { STEERING } from '../config/vehicle.ts';
 import { DEG, clamp } from './math.ts';
 import type { DriveInput } from '../physics/artic.ts';
@@ -53,8 +54,9 @@ export class TouchControls {
     this.bindTap(this.handbrakeBtn, cb.onHandbrake);
     this.bindTap($('t-pause'), cb.onPause);
     this.bindTap($('t-sound'), cb.onSound);
+    // Full screen where the browser allows it; on iPhone the button explains Add to Home Screen.
     const fs = $('t-fullscreen');
-    if (document.fullscreenEnabled) {
+    if (fullscreenMode() !== 'none') {
       fs.classList.remove('hidden');
       this.bindTap(fs, cb.onFullscreen);
     }
