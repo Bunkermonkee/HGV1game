@@ -183,7 +183,8 @@ let lastThrottle = 0;
 // ---- Canvas sizing / devicePixelRatio ---------------------------------------
 
 let touchLayout = touch.layout(window.innerWidth, window.innerHeight);
-let rotateDismissed = false;
+/** The "turn sideways for a bigger view" tip has been shown this visit. */
+let rotateTipShown = false;
 
 function controlLabels() {
   return touch.active ? LABELS.touch : gamepad.active ? LABELS.gamepad : LABELS.keyboard;
@@ -203,6 +204,17 @@ function portraitPhone(): boolean {
 }
 
 const homescreenEl = document.getElementById('homescreen')!;
+
+/** Portrait phone layout: the time / shunts panel moves below the gauges and buttons. */
+function portraitLayout(): boolean {
+  return touch.active && viewH > viewW * 1.1;
+}
+
+/** Where the time / shunts panel goes: top centre, or below the top row on a portrait phone. */
+function statsTop(hudBottom: number, compact: boolean): number {
+  // The touch buttons (pause, sound, full screen) are 46 px tall at the top right.
+  return compact && portraitLayout() ? Math.max(hudBottom, 56) + 8 : 10;
+}
 
 function toggleFullscreen(): void {
   if (fullscreenMode() === 'homescreen') {
@@ -351,6 +363,10 @@ function startDriving(): void {
   hideMenus();
   mode = 'play';
   canvas.focus();
+  if (portraitPhone() && !rotateTipShown) {
+    rotateTipShown = true;
+    toasts.show('Tip: turn your phone sideways for a bigger view', theme.uiGood, 4);
+  }
   if (fpvActive() && !fpvHintShown) {
     fpvHintShown = true;
     const look = touch.active ? 'Drag the view' : 'Hold Q / E (or drag the view)';
@@ -826,7 +842,7 @@ function renderFrame(dt: number): void {
 
   const compact = touch.active || !!replaying;
   const hudBottom = drawHud(ctx, artic, viewW, viewH, compact);
-  const statsBottom = drawRunStats(ctx, session, viewW);
+  const statsBottom = drawRunStats(ctx, session, viewW, statsTop(hudBottom, compact));
   let guideBottom = statsBottom;
   if (session.state === 'driving' && session.bayCheck.near) {
     drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
@@ -846,7 +862,8 @@ function renderFrame(dt: number): void {
       else drawTip(ctx, tutorial.current, viewW, viewH, { x: 12, width: viewW - 24, bottom: viewH * 0.5 });
     }
     const controlsTop = viewH - 14 - Math.max(touchLayout.wheel, touchLayout.pedalH);
-    mirrors.draw(ctx, viewW, dpr, Math.max(hudBottom + 12, 64), controlsTop - 12, artic, yard, drawWorld);
+    const mirrorTop = portraitLayout() ? guideBottom + 10 : Math.max(hudBottom + 12, 64);
+    mirrors.draw(ctx, viewW, dpr, mirrorTop, controlsTop - 12, artic, yard, drawWorld);
   } else {
     // The tip sits above the gauges; the mirrors fit in the space above that.
     const tipTop = tutorial.current ? drawTip(ctx, tutorial.current, viewW, viewH) : viewH - hudHeight(viewW, viewH);
@@ -877,7 +894,7 @@ function renderFirstPerson(fpv: FirstPerson, dt: number): void {
   if (playing) {
     if (!compact) drawCabWheel(ctx, artic, viewW, viewH);
     const hudBottom = drawHud(ctx, artic, viewW, viewH, compact);
-    const statsBottom = drawRunStats(ctx, session, viewW);
+    const statsBottom = drawRunStats(ctx, session, viewW, statsTop(hudBottom, compact));
     let guideBottom = statsBottom;
     if (session.state === 'driving' && session.bayCheck.near) {
       drawBayGuide(ctx, session.bayCheck, viewW, statsBottom, session.bay.label);
@@ -888,7 +905,7 @@ function renderFirstPerson(fpv: FirstPerson, dt: number): void {
       guideBottom = statsBottom + 70;
     }
     if (compact) {
-      top = Math.max(hudBottom + 12, 64);
+      top = portraitLayout() ? guideBottom + 10 : Math.max(hudBottom + 12, 64);
       bottom = viewH - 14 - Math.max(touchLayout.wheel, touchLayout.pedalH) - 12;
       const left = 14 + touchLayout.wheel + 12;
       const right = viewW - touchLayout.rightWidth - 12;
@@ -959,8 +976,6 @@ function drawHelp(firstPersonHelp = false): void {
   ctx.restore();
 }
 
-const rotateEl = document.getElementById('rotate')!;
-document.getElementById('rotate-dismiss')!.addEventListener('click', () => (rotateDismissed = true));
 let touchShown = false;
 let noteForTouch = false;
 
@@ -974,9 +989,7 @@ function frame(now: number): void {
   handlePad();
   tutorial.labels = controlLabels();
 
-  const rotate = portraitPhone() && !rotateDismissed;
-  rotateEl.classList.toggle('hidden', !rotate);
-  const showTouch = touch.active && mode === 'play' && !paused && !isScreenOpen() && !rotate && !replaying;
+  const showTouch = touch.active && mode === 'play' && !paused && !isScreenOpen() && !replaying;
   if (showTouch !== touchShown) {
     touch.setVisible(showTouch);
     touchShown = showTouch;
@@ -987,11 +1000,11 @@ function frame(now: number): void {
   }
   if (showTouch) touch.sync(session.artic.steer / (STEERING.maxAngle * DEG), session.artic.handbrake);
 
-  if (mode === 'play' && !paused && !rotate) update(dt);
+  if (mode === 'play' && !paused) update(dt);
   updateLook(dt);
   const a = session.artic;
   sound.update(dt, {
-    running: mode === 'play' && !paused && !rotate && !isScreenOpen(),
+    running: mode === 'play' && !paused && !isScreenOpen(),
     speedFraction: Math.min(1, Math.abs(a.speed) / (SPEED.maxForwardMph * MPH_TO_MS)),
     throttle: lastThrottle !== 0 && !a.handbrake,
     reversing: a.gear === 'R' && session.state === 'driving',

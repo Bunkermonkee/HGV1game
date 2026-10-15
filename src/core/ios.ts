@@ -82,7 +82,25 @@ export function installZoomGuard(): void {
   document.addEventListener('touchmove', (e) => {
     if (e.touches.length > 1 && !zoomed()) e.preventDefault();
   }, { passive: false });
-  // Double tap: stopped by `touch-action: manipulation` in the CSS.
+  // Double tap: `touch-action: manipulation` in the CSS stops it on most
+  // phones, but iPhone Safari can still zoom. Cancelling the second tap of a
+  // quick pair stops the zoom; if that tap landed on a button, press it
+  // anyway so quick taps in the menus still work. The driving controls work
+  // on pointerdown, so cancelling the tap doesn't affect them.
+  let lastTapEnd = -1000;
+  document.addEventListener('touchend', (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('input, textarea, select')) {
+      lastTapEnd = -1000;
+      return;
+    }
+    const now = e.timeStamp;
+    if (now - lastTapEnd < 350 && e.touches.length === 0 && e.cancelable) {
+      e.preventDefault();
+      if (!target?.closest('#touch')) target?.closest<HTMLElement>('button, a, label, [role="tab"]')?.click();
+    }
+    lastTapEnd = now;
+  }, { passive: false });
 
   // Snap back to normal size: re-applying the viewport makes Safari drop the zoom.
   const reset = () => {

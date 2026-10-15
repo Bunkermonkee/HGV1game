@@ -191,13 +191,13 @@ export interface RunStats {
   contacts: number;
 }
 
-/** Time / shunts / contacts across the top centre. */
-export function drawRunStats(ctx: CanvasRenderingContext2D, stats: RunStats, viewW: number): number {
+/** Time / shunts / contacts across the top centre (or lower down, below the other panels, on a portrait phone). */
+export function drawRunStats(ctx: CanvasRenderingContext2D, stats: RunStats, viewW: number, top = 10): number {
   const s = Math.min(1.15, Math.max(0.8, viewW / 900));
   const w = 300;
   const h = 56;
   ctx.save();
-  ctx.translate(viewW / 2 - (w * s) / 2, 10);
+  ctx.translate(viewW / 2 - (w * s) / 2, top);
   ctx.scale(s, s);
   panel(ctx, 0, 0, w, h);
   const cell = (x: number, label: string, value: string, colour: string) => {
@@ -215,7 +215,7 @@ export function drawRunStats(ctx: CanvasRenderingContext2D, stats: RunStats, vie
   cell(172, 'SHUNTS', String(stats.shunts), theme.uiText);
   cell(250, 'CONTACTS', String(stats.contacts), stats.contacts ? theme.uiWarn : theme.uiText);
   ctx.restore();
-  return 10 + h * s;
+  return top + h * s;
 }
 
 export interface BayGuide {

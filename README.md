@@ -50,16 +50,16 @@ Touch mode switches on automatically on touch devices.
 - **P button:** handbrake on/off.
 - **Top-right buttons:** pause, sound on/off and full screen. On Android the full-screen
   button also locks landscape; the iframe needs `allow="fullscreen"`.
-- **Portrait:** held upright, the phone shows a "turn your phone sideways"
-  prompt (with a "Play anyway" option). This also works inside a
-  landscape-shaped iframe on a portrait phone.
+- **Portrait:** plays too. The time panel moves below the gauges, and a
+  one-off tip suggests turning sideways for a bigger view.
 - **HUD:** the gauges move to a compact panel top-left, and tutorial tips
   name the on-screen controls.
 - **iPhone:** Safari won't let a web page go full screen, so the ⛶ button
   shows how to **Add to Home Screen** instead; opened from there the game runs
   with no browser bars (`public/manifest.webmanifest`, `apple-mobile-web-app-*`
   tags). Pinch and double-tap zoom are blocked while the page is at normal
-  size (a zoomed page can still be pinched back out and is reset after a
+  size (the second tap of a quick double tap is cancelled, and still presses
+  the button it landed on) (a zoomed page can still be pinched back out and is reset after a
   rotation), Safari's landscape text enlarging is switched off, and the game
   picture stays clear of the notch (`src/core/ios.ts`).
 

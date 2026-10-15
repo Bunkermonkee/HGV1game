@@ -392,34 +392,6 @@ html, body {
 .t-handbrake.on { background: var(--ui-bad); color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 
 /* ---- Rotate prompt ---- */
-.rotate {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: var(--brand-dark);
-  text-align: center;
-}
-.rotate-card { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 320px; }
-.rotate-card p { margin: 0; font-size: 18px; line-height: 1.5; }
-.rotate-icon {
-  width: 56px;
-  height: 92px;
-  border: 5px solid var(--ui-text);
-  border-radius: 12px;
-  animation: rotate-hint 2.4s ease-in-out infinite;
-}
-@keyframes rotate-hint {
-  0%, 25% { transform: rotate(0deg); }
-  55%, 100% { transform: rotate(-90deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .rotate-icon { animation: none; transform: rotate(-90deg); }
-}
-
 /* ---- Leaderboard ---- */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 #btn-board { align-self: stretch; }
