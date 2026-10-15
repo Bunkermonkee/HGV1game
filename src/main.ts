@@ -251,6 +251,17 @@ function resize(): void {
 window.addEventListener('resize', resize);
 resize();
 
+/**
+ * Re-measure if the canvas has changed size. iPhone Safari can fire 'resize'
+ * before a rotation has finished laying out (and not at all when its
+ * toolbar shows or hides), which left the picture stretched to the old
+ * shape. Checked every frame: two property reads.
+ */
+function syncSize(): void {
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  if (canvas.clientWidth !== viewW || canvas.clientHeight !== viewH || d !== dpr) resize();
+}
+
 // ---- Levels and screens -----------------------------------------------------
 
 function loadLevel(index: number): void {
@@ -984,6 +995,7 @@ function frame(now: number): void {
   // Clamp long gaps (tab switch, breakpoint) so the truck never teleports.
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  syncSize();
   gamepad.poll();
   handleKeys();
   handlePad();
